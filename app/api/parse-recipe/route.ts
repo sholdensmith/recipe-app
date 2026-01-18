@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Optionally save to database
     if (saveToDb) {
       const recipe = await convertParsedToRecipe(parsed, rawText);
-      const id = insertRecipe(recipe);
+      const id = await insertRecipe(recipe as any);
       return NextResponse.json({ ...parsed, id, saved: true });
     }
 

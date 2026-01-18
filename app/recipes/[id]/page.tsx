@@ -180,7 +180,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           <div className="mb-8 print:mb-3">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 print:text-base print:text-black print:mb-1 print:font-semibold">Ingredients</h2>
             <ul className="space-y-2 print:space-y-0 print:text-sm">
-              {recipe.ingredients.map((ingredient, index) => (
+              {recipe.ingredients.map((ingredient: string, index: number) => (
                 <li key={index} className="flex items-start">
                   <span className="text-blue-600 mr-3 print:text-black print:mr-2">•</span>
                   <span className="text-gray-700 print:text-black">{ingredient}</span>
@@ -193,7 +193,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           <div className="mb-8 print:mb-3">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 print:text-base print:text-black print:mb-1 print:font-semibold">Instructions</h2>
             <ol className="space-y-4 print:space-y-1 print:text-sm">
-              {recipe.instructions.map((instruction, index) => (
+              {recipe.instructions.map((instruction: string, index: number) => (
                 <li key={index} className="flex items-start">
                   <span className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold mr-4 print:bg-white print:text-black print:border print:border-black print:w-5 print:h-5 print:text-xs print:mr-2">
                     {index + 1}

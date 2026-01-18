@@ -118,7 +118,7 @@ export default function MealDetailPage({ params }: { params: Promise<{ id: strin
 
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Items</h2>
           <div className="space-y-4">
-            {meal.items.map((item) => (
+            {meal.items.map((item: any) => (
               <div key={item.id} className="p-4 border border-gray-200 rounded-lg">
                 {item.item_type === 'recipe' && item.recipe ? (
                   <div>

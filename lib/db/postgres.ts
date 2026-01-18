@@ -1,5 +1,5 @@
 import { sql } from '@vercel/postgres';
-import type { Recipe, Meal, MealItem, MealItemWithRecipe, MealWithItems } from './index';
+import type { Recipe, Meal, MealItem, MealItemWithRecipe, MealWithItems } from './types';
 
 // Helper to convert array params to positional ($1, $2, etc)
 function toPositional(values: any[]): string {

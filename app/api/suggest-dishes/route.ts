@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const availableRecipes = getAllRecipes();
+    const availableRecipes = await getAllRecipes();
 
     const suggestions = await suggestComplementaryDishes(
       { currentItems, servings },
