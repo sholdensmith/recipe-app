@@ -16,7 +16,7 @@ export async function GET(
       );
     }
 
-    const recipe = getRecipeById(recipeId);
+    const recipe = await getRecipeById(recipeId);
 
     if (!recipe) {
       return NextResponse.json(
@@ -50,7 +50,7 @@ export async function DELETE(
       );
     }
 
-    const success = deleteRecipe(recipeId);
+    const success = await deleteRecipe(recipeId);
 
     if (!success) {
       return NextResponse.json(

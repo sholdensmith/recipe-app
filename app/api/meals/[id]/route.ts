@@ -16,7 +16,7 @@ export async function GET(
       );
     }
 
-    const meal = getMealWithItems(mealId);
+    const meal = await getMealWithItems(mealId);
 
     if (!meal) {
       return NextResponse.json(
@@ -51,7 +51,7 @@ export async function PATCH(
     }
 
     const updates = await request.json();
-    const success = updateMeal(mealId, updates);
+    const success = await updateMeal(mealId, updates);
 
     if (!success) {
       return NextResponse.json(
@@ -85,7 +85,7 @@ export async function DELETE(
       );
     }
 
-    const success = deleteMeal(mealId);
+    const success = await deleteMeal(mealId);
 
     if (!success) {
       return NextResponse.json(

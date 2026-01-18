@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const meal = getMealWithItems(mealId);
+      const meal = await getMealWithItems(mealId);
       if (!meal) {
         return NextResponse.json(
           { error: 'Meal not found' },
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(meal);
     }
 
-    const meals = getAllMeals();
+    const meals = await getAllMeals();
     return NextResponse.json(meals);
   } catch (error) {
     console.error('Error fetching meals:', error);
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const id = insertMeal(meal);
+    const id = await insertMeal(meal);
     return NextResponse.json({ id, message: 'Meal created successfully' });
   } catch (error) {
     console.error('Error creating meal:', error);

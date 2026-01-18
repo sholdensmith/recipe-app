@@ -16,7 +16,7 @@ export async function GET(
       );
     }
 
-    const items = getMealItems(mealId);
+    const items = await getMealItems(mealId);
     return NextResponse.json(items);
   } catch (error) {
     console.error('Error fetching meal items:', error);
@@ -67,7 +67,7 @@ export async function POST(
       );
     }
 
-    const itemId = insertMealItem(item);
+    const itemId = await insertMealItem(item);
     return NextResponse.json({ id: itemId, message: 'Item added to meal' });
   } catch (error) {
     console.error('Error adding meal item:', error);
@@ -101,7 +101,7 @@ export async function DELETE(
       );
     }
 
-    const success = deleteMealItem(id);
+    const success = await deleteMealItem(id);
 
     if (!success) {
       return NextResponse.json(

@@ -7,12 +7,12 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
 
     if (action === 'categories') {
-      const categories = getCategories();
+      const categories = await getCategories();
       return NextResponse.json(categories);
     }
 
     if (action === 'cuisines') {
-      const cuisines = getCuisines();
+      const cuisines = await getCuisines();
       return NextResponse.json(cuisines);
     }
 
@@ -21,11 +21,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || undefined;
 
     if (category || cuisine || search) {
-      const recipes = filterRecipes({ category, cuisine, search });
+      const recipes = await filterRecipes({ category, cuisine, search });
       return NextResponse.json(recipes);
     }
 
-    const recipes = getAllRecipes();
+    const recipes = await getAllRecipes();
     return NextResponse.json(recipes);
   } catch (error) {
     console.error('Error fetching recipes:', error);
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const id = insertRecipe(recipe);
+    const id = await insertRecipe(recipe);
     return NextResponse.json({ id, message: 'Recipe created successfully' });
   } catch (error) {
     console.error('Error creating recipe:', error);

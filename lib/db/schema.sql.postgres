@@ -1,0 +1,64 @@
+-- PostgreSQL Schema for Recipe App
+
+CREATE TABLE IF NOT EXISTS recipes (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  author TEXT,
+  date_published TIMESTAMP,
+  prep_time INTEGER,
+  cook_time INTEGER,
+  total_time INTEGER,
+  servings TEXT,
+  recipe_yield TEXT,
+  recipe_category TEXT,
+  recipe_cuisine TEXT,
+  ingredients JSONB NOT NULL,
+  instructions JSONB NOT NULL,
+  notes TEXT,
+  image_url TEXT,
+  source_url TEXT,
+  raw_text TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_recipes_category ON recipes(recipe_category);
+CREATE INDEX IF NOT EXISTS idx_recipes_cuisine ON recipes(recipe_cuisine);
+CREATE INDEX IF NOT EXISTS idx_recipes_created_at ON recipes(created_at DESC);
+
+-- Full-text search index for Postgres
+CREATE INDEX IF NOT EXISTS idx_recipes_search ON recipes USING GIN (
+  to_tsvector('english',
+    COALESCE(name, '') || ' ' ||
+    COALESCE(ingredients::text, '') || ' ' ||
+    COALESCE(instructions::text, '')
+  )
+);
+
+-- Meals table
+CREATE TABLE IF NOT EXISTS meals (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  servings TEXT,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Meal items table
+CREATE TABLE IF NOT EXISTS meal_items (
+  id SERIAL PRIMARY KEY,
+  meal_id INTEGER NOT NULL,
+  recipe_id INTEGER,
+  item_type TEXT NOT NULL CHECK(item_type IN ('recipe', 'simple')),
+  simple_item_name TEXT,
+  simple_item_category TEXT,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_meal_items_meal_id ON meal_items(meal_id);
+CREATE INDEX IF NOT EXISTS idx_meal_items_recipe_id ON meal_items(recipe_id);
