@@ -29,23 +29,13 @@ export async function insertRecipe(recipe: Recipe): Promise<number> {
 
 export async function getAllRecipes(): Promise<Recipe[]> {
   const result = await sql`SELECT * FROM recipes ORDER BY created_at DESC`;
-  return result.rows.map(row => ({
-    ...row,
-    ingredients: JSON.parse(row.ingredients as string),
-    instructions: JSON.parse(row.instructions as string),
-  })) as Recipe[];
+  return result.rows as Recipe[];
 }
 
 export async function getRecipeById(id: number): Promise<Recipe | null> {
   const result = await sql`SELECT * FROM recipes WHERE id = ${id}`;
   if (result.rows.length === 0) return null;
-
-  const row = result.rows[0];
-  return {
-    ...row,
-    ingredients: JSON.parse(row.ingredients as string),
-    instructions: JSON.parse(row.instructions as string),
-  } as Recipe;
+  return result.rows[0] as Recipe;
 }
 
 export async function filterRecipes(filters: {
@@ -80,11 +70,7 @@ export async function filterRecipes(filters: {
   query += ' ORDER BY created_at DESC';
 
   const result = await sql.query(query, params);
-  return result.rows.map(row => ({
-    ...row,
-    ingredients: JSON.parse(row.ingredients as string),
-    instructions: JSON.parse(row.instructions as string),
-  })) as Recipe[];
+  return result.rows as Recipe[];
 }
 
 export async function getCategories(): Promise<string[]> {
@@ -219,8 +205,8 @@ export async function getMealItems(mealId: number): Promise<MealItemWithRecipe[]
         id: row.recipe_id,
         name: row.recipe_name,
         description: row.recipe_description,
-        ingredients: JSON.parse(row.recipe_ingredients),
-        instructions: JSON.parse(row.recipe_instructions),
+        ingredients: row.recipe_ingredients,
+        instructions: row.recipe_instructions,
         recipe_category: row.recipe_category,
         recipe_cuisine: row.recipe_cuisine,
         prep_time: row.recipe_prep_time,
