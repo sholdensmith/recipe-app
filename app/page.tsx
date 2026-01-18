@@ -75,12 +75,20 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">Family Recipe Collection</h1>
-            <Link
-              href="/add-recipe"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              Add Recipe
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/meals"
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                My Meals
+              </Link>
+              <Link
+                href="/add-recipe"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Add Recipe
+              </Link>
+            </div>
           </div>
         </div>
       </header>

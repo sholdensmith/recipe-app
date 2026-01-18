@@ -183,3 +183,200 @@ export function deleteRecipe(id: number): boolean {
   const result = stmt.run(id);
   return result.changes > 0;
 }
+
+// ===== MEAL INTERFACES =====
+
+export interface Meal {
+  id?: number;
+  name: string;
+  servings?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MealItem {
+  id?: number;
+  meal_id: number;
+  recipe_id?: number;
+  item_type: 'recipe' | 'simple';
+  simple_item_name?: string;
+  simple_item_category?: string;
+  order_index: number;
+  created_at?: string;
+}
+
+export interface MealItemWithRecipe extends MealItem {
+  recipe?: Recipe;
+}
+
+export interface MealWithItems extends Meal {
+  items: MealItemWithRecipe[];
+}
+
+// ===== MEAL CRUD OPERATIONS =====
+
+export function insertMeal(meal: Meal): number {
+  const db = getDb();
+  const stmt = db.prepare(`
+    INSERT INTO meals (name, servings, notes)
+    VALUES (@name, @servings, @notes)
+  `);
+
+  const result = stmt.run({
+    name: meal.name,
+    servings: meal.servings || null,
+    notes: meal.notes || null,
+  });
+
+  return result.lastInsertRowid as number;
+}
+
+export function getAllMeals(): Meal[] {
+  const db = getDb();
+  const stmt = db.prepare('SELECT * FROM meals ORDER BY created_at DESC');
+  return stmt.all() as Meal[];
+}
+
+export function getMealById(id: number): Meal | null {
+  const db = getDb();
+  const stmt = db.prepare('SELECT * FROM meals WHERE id = ?');
+  return stmt.get(id) as Meal | null;
+}
+
+export function updateMeal(id: number, meal: Partial<Meal>): boolean {
+  const db = getDb();
+  const updates: string[] = [];
+  const params: any = { id };
+
+  if (meal.name !== undefined) {
+    updates.push('name = @name');
+    params.name = meal.name;
+  }
+  if (meal.servings !== undefined) {
+    updates.push('servings = @servings');
+    params.servings = meal.servings;
+  }
+  if (meal.notes !== undefined) {
+    updates.push('notes = @notes');
+    params.notes = meal.notes;
+  }
+
+  if (updates.length === 0) return false;
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+
+  const stmt = db.prepare(`
+    UPDATE meals SET ${updates.join(', ')} WHERE id = @id
+  `);
+
+  const result = stmt.run(params);
+  return result.changes > 0;
+}
+
+export function deleteMeal(id: number): boolean {
+  const db = getDb();
+  const stmt = db.prepare('DELETE FROM meals WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+// ===== MEAL ITEM OPERATIONS =====
+
+export function insertMealItem(item: MealItem): number {
+  const db = getDb();
+  const stmt = db.prepare(`
+    INSERT INTO meal_items (
+      meal_id, recipe_id, item_type, simple_item_name,
+      simple_item_category, order_index
+    ) VALUES (
+      @meal_id, @recipe_id, @item_type, @simple_item_name,
+      @simple_item_category, @order_index
+    )
+  `);
+
+  const result = stmt.run({
+    meal_id: item.meal_id,
+    recipe_id: item.recipe_id || null,
+    item_type: item.item_type,
+    simple_item_name: item.simple_item_name || null,
+    simple_item_category: item.simple_item_category || null,
+    order_index: item.order_index,
+  });
+
+  return result.lastInsertRowid as number;
+}
+
+export function getMealItems(mealId: number): MealItemWithRecipe[] {
+  const db = getDb();
+  const stmt = db.prepare(`
+    SELECT
+      mi.*,
+      r.id as recipe_id,
+      r.name as recipe_name,
+      r.description as recipe_description,
+      r.ingredients as recipe_ingredients,
+      r.instructions as recipe_instructions,
+      r.recipe_category as recipe_category,
+      r.recipe_cuisine as recipe_cuisine,
+      r.prep_time as recipe_prep_time,
+      r.cook_time as recipe_cook_time,
+      r.servings as recipe_servings
+    FROM meal_items mi
+    LEFT JOIN recipes r ON mi.recipe_id = r.id
+    WHERE mi.meal_id = ?
+    ORDER BY mi.order_index ASC
+  `);
+
+  const rows = stmt.all(mealId) as any[];
+
+  return rows.map(row => {
+    const item: MealItemWithRecipe = {
+      id: row.id,
+      meal_id: row.meal_id,
+      recipe_id: row.recipe_id,
+      item_type: row.item_type,
+      simple_item_name: row.simple_item_name,
+      simple_item_category: row.simple_item_category,
+      order_index: row.order_index,
+      created_at: row.created_at,
+    };
+
+    // If this is a recipe item, populate the recipe object
+    if (row.item_type === 'recipe' && row.recipe_id) {
+      item.recipe = {
+        id: row.recipe_id,
+        name: row.recipe_name,
+        description: row.recipe_description,
+        ingredients: JSON.parse(row.recipe_ingredients),
+        instructions: JSON.parse(row.recipe_instructions),
+        recipe_category: row.recipe_category,
+        recipe_cuisine: row.recipe_cuisine,
+        prep_time: row.recipe_prep_time,
+        cook_time: row.recipe_cook_time,
+        servings: row.recipe_servings,
+      };
+    }
+
+    return item;
+  });
+}
+
+export function getMealWithItems(id: number): MealWithItems | null {
+  const meal = getMealById(id);
+  if (!meal) return null;
+
+  const items = getMealItems(id);
+
+  return {
+    ...meal,
+    items,
+  };
+}
+
+export function deleteMealItem(id: number): boolean {
+  const db = getDb();
+  const stmt = db.prepare('DELETE FROM meal_items WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}

@@ -53,3 +53,30 @@ CREATE TRIGGER IF NOT EXISTS recipes_au AFTER UPDATE ON recipes BEGIN
     instructions = new.instructions
   WHERE rowid = new.id;
 END;
+
+-- Meals table: stores saved meal plans
+CREATE TABLE IF NOT EXISTS meals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  servings TEXT,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Meal items: links recipes and non-recipe items to meals
+CREATE TABLE IF NOT EXISTS meal_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  meal_id INTEGER NOT NULL,
+  recipe_id INTEGER,
+  item_type TEXT NOT NULL CHECK(item_type IN ('recipe', 'simple')),
+  simple_item_name TEXT,
+  simple_item_category TEXT,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_meal_items_meal_id ON meal_items(meal_id);
+CREATE INDEX IF NOT EXISTS idx_meal_items_recipe_id ON meal_items(recipe_id);
