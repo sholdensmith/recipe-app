@@ -14,6 +14,7 @@ const db = isVercel ? postgres : sqlite;
 export const getAllRecipes = db.getAllRecipes;
 export const getRecipeById = db.getRecipeById;
 export const insertRecipe = db.insertRecipe;
+export const updateRecipe = db.updateRecipe;
 export const deleteRecipe = db.deleteRecipe;
 export const filterRecipes = db.filterRecipes;
 export const getCategories = db.getCategories;

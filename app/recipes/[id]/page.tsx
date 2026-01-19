@@ -9,6 +9,9 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedNotes, setEditedNotes] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchRecipe();
@@ -73,6 +76,44 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
     } catch (err) {
       alert('Failed to delete recipe. Please try again.');
       console.error('Error deleting recipe:', err);
+    }
+  };
+
+  const handleEditNotes = () => {
+    setEditedNotes(recipe?.notes || '');
+    setIsEditingNotes(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingNotes(false);
+    setEditedNotes('');
+  };
+
+  const handleSaveNotes = async () => {
+    if (!recipe) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/recipes/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes: editedNotes }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update notes');
+      }
+
+      // Update local state
+      setRecipe({ ...recipe, notes: editedNotes });
+      setIsEditingNotes(false);
+    } catch (err) {
+      alert('Failed to save notes. Please try again.');
+      console.error('Error saving notes:', err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -205,10 +246,63 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           </div>
 
           {/* Notes */}
-          {recipe.notes && (
-            <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg print:bg-white print:border-gray-400 print:mb-2 print:p-2">
-              <h3 className="font-semibold text-gray-900 mb-2 print:text-black print:text-sm print:mb-1">Notes</h3>
-              <p className="text-gray-700 print:text-black print:text-xs">{recipe.notes}</p>
+          {(recipe.notes || isEditingNotes) && (
+            <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg print:bg-white print:border-gray-400 print:mb-2 print:p-2 relative">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-semibold text-gray-900 print:text-black print:text-sm print:mb-1">Notes</h3>
+                {!isEditingNotes && (
+                  <button
+                    onClick={handleEditNotes}
+                    className="text-gray-500 hover:text-gray-700 print:hidden"
+                    title="Edit notes"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {isEditingNotes ? (
+                <div className="print:hidden">
+                  <textarea
+                    value={editedNotes}
+                    onChange={(e) => setEditedNotes(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[100px] text-gray-700"
+                    placeholder="Add notes about this recipe..."
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={handleSaveNotes}
+                      disabled={isSaving}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors disabled:bg-gray-400"
+                    >
+                      {isSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                      className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md font-medium transition-colors disabled:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-700 print:text-black print:text-xs whitespace-pre-wrap">{recipe.notes}</p>
+              )}
+            </div>
+          )}
+          {!recipe.notes && !isEditingNotes && (
+            <div className="mb-8 print:hidden">
+              <button
+                onClick={handleEditNotes}
+                className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Notes
+              </button>
             </div>
           )}
 

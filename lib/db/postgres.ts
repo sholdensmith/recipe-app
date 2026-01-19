@@ -93,6 +93,83 @@ export async function getCuisines(): Promise<string[]> {
   return result.rows.map(row => row.recipe_cuisine);
 }
 
+export async function updateRecipe(id: number, recipe: Partial<Recipe>): Promise<boolean> {
+  const updates: string[] = [];
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  if (recipe.name !== undefined) {
+    updates.push(`name = $${paramIndex++}`);
+    params.push(recipe.name);
+  }
+  if (recipe.description !== undefined) {
+    updates.push(`description = $${paramIndex++}`);
+    params.push(recipe.description);
+  }
+  if (recipe.author !== undefined) {
+    updates.push(`author = $${paramIndex++}`);
+    params.push(recipe.author);
+  }
+  if (recipe.prep_time !== undefined) {
+    updates.push(`prep_time = $${paramIndex++}`);
+    params.push(recipe.prep_time);
+  }
+  if (recipe.cook_time !== undefined) {
+    updates.push(`cook_time = $${paramIndex++}`);
+    params.push(recipe.cook_time);
+  }
+  if (recipe.total_time !== undefined) {
+    updates.push(`total_time = $${paramIndex++}`);
+    params.push(recipe.total_time);
+  }
+  if (recipe.servings !== undefined) {
+    updates.push(`servings = $${paramIndex++}`);
+    params.push(recipe.servings);
+  }
+  if (recipe.recipe_yield !== undefined) {
+    updates.push(`recipe_yield = $${paramIndex++}`);
+    params.push(recipe.recipe_yield);
+  }
+  if (recipe.recipe_category !== undefined) {
+    updates.push(`recipe_category = $${paramIndex++}`);
+    params.push(recipe.recipe_category);
+  }
+  if (recipe.recipe_cuisine !== undefined) {
+    updates.push(`recipe_cuisine = $${paramIndex++}`);
+    params.push(recipe.recipe_cuisine);
+  }
+  if (recipe.ingredients !== undefined) {
+    updates.push(`ingredients = $${paramIndex++}`);
+    params.push(JSON.stringify(recipe.ingredients));
+  }
+  if (recipe.instructions !== undefined) {
+    updates.push(`instructions = $${paramIndex++}`);
+    params.push(JSON.stringify(recipe.instructions));
+  }
+  if (recipe.notes !== undefined) {
+    updates.push(`notes = $${paramIndex++}`);
+    params.push(recipe.notes);
+  }
+  if (recipe.image_url !== undefined) {
+    updates.push(`image_url = $${paramIndex++}`);
+    params.push(recipe.image_url);
+  }
+  if (recipe.source_url !== undefined) {
+    updates.push(`source_url = $${paramIndex++}`);
+    params.push(recipe.source_url);
+  }
+
+  if (updates.length === 0) return false;
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+
+  const query = `UPDATE recipes SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+  params.push(id);
+
+  const result = await sql.query(query, params);
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function deleteRecipe(id: number): Promise<boolean> {
   const result = await sql`DELETE FROM recipes WHERE id = ${id}`;
   return (result.rowCount ?? 0) > 0;

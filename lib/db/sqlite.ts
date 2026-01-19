@@ -177,6 +177,84 @@ export function getCuisines(): string[] {
   return stmt.all().map((row: any) => row.recipe_cuisine);
 }
 
+export function updateRecipe(id: number, recipe: Partial<Recipe>): boolean {
+  const db = getDb();
+  const updates: string[] = [];
+  const params: any = { id };
+
+  if (recipe.name !== undefined) {
+    updates.push('name = @name');
+    params.name = recipe.name;
+  }
+  if (recipe.description !== undefined) {
+    updates.push('description = @description');
+    params.description = recipe.description;
+  }
+  if (recipe.author !== undefined) {
+    updates.push('author = @author');
+    params.author = recipe.author;
+  }
+  if (recipe.prep_time !== undefined) {
+    updates.push('prep_time = @prep_time');
+    params.prep_time = recipe.prep_time;
+  }
+  if (recipe.cook_time !== undefined) {
+    updates.push('cook_time = @cook_time');
+    params.cook_time = recipe.cook_time;
+  }
+  if (recipe.total_time !== undefined) {
+    updates.push('total_time = @total_time');
+    params.total_time = recipe.total_time;
+  }
+  if (recipe.servings !== undefined) {
+    updates.push('servings = @servings');
+    params.servings = recipe.servings;
+  }
+  if (recipe.recipe_yield !== undefined) {
+    updates.push('recipe_yield = @recipe_yield');
+    params.recipe_yield = recipe.recipe_yield;
+  }
+  if (recipe.recipe_category !== undefined) {
+    updates.push('recipe_category = @recipe_category');
+    params.recipe_category = recipe.recipe_category;
+  }
+  if (recipe.recipe_cuisine !== undefined) {
+    updates.push('recipe_cuisine = @recipe_cuisine');
+    params.recipe_cuisine = recipe.recipe_cuisine;
+  }
+  if (recipe.ingredients !== undefined) {
+    updates.push('ingredients = @ingredients');
+    params.ingredients = JSON.stringify(recipe.ingredients);
+  }
+  if (recipe.instructions !== undefined) {
+    updates.push('instructions = @instructions');
+    params.instructions = JSON.stringify(recipe.instructions);
+  }
+  if (recipe.notes !== undefined) {
+    updates.push('notes = @notes');
+    params.notes = recipe.notes;
+  }
+  if (recipe.image_url !== undefined) {
+    updates.push('image_url = @image_url');
+    params.image_url = recipe.image_url;
+  }
+  if (recipe.source_url !== undefined) {
+    updates.push('source_url = @source_url');
+    params.source_url = recipe.source_url;
+  }
+
+  if (updates.length === 0) return false;
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+
+  const stmt = db.prepare(`
+    UPDATE recipes SET ${updates.join(', ')} WHERE id = @id
+  `);
+
+  const result = stmt.run(params);
+  return result.changes > 0;
+}
+
 export function deleteRecipe(id: number): boolean {
   const db = getDb();
   const stmt = db.prepare('DELETE FROM recipes WHERE id = ?');
