@@ -41,6 +41,7 @@ export async function getRecipeById(id: number): Promise<Recipe | null> {
 export async function filterRecipes(filters: {
   category?: string;
   cuisine?: string;
+  cuisines?: string[]; // Support multiple cuisines for hierarchy filtering
   search?: string;
 }): Promise<Recipe[]> {
   let query = 'SELECT * FROM recipes WHERE 1=1';
@@ -52,7 +53,12 @@ export async function filterRecipes(filters: {
     params.push(filters.category);
   }
 
-  if (filters.cuisine) {
+  if (filters.cuisines && filters.cuisines.length > 0) {
+    // Support filtering by multiple cuisines (for parent cuisine matching)
+    const placeholders = filters.cuisines.map(() => `$${paramIndex++}`).join(', ');
+    query += ` AND recipe_cuisine IN (${placeholders})`;
+    params.push(...filters.cuisines);
+  } else if (filters.cuisine) {
     query += ` AND recipe_cuisine = $${paramIndex++}`;
     params.push(filters.cuisine);
   }

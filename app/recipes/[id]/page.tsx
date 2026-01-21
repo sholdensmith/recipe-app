@@ -12,6 +12,9 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
+  const [editedCategory, setEditedCategory] = useState('');
+  const [editedCuisine, setEditedCuisine] = useState('');
 
   useEffect(() => {
     fetchRecipe();
@@ -117,6 +120,53 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
     }
   };
 
+  const handleEditMetadata = () => {
+    setEditedCategory(recipe?.recipe_category || '');
+    setEditedCuisine(recipe?.recipe_cuisine || '');
+    setIsEditingMetadata(true);
+  };
+
+  const handleCancelMetadataEdit = () => {
+    setIsEditingMetadata(false);
+    setEditedCategory('');
+    setEditedCuisine('');
+  };
+
+  const handleSaveMetadata = async () => {
+    if (!recipe) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/recipes/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipe_category: editedCategory || null,
+          recipe_cuisine: editedCuisine || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update metadata');
+      }
+
+      // Update local state
+      setRecipe({
+        ...recipe,
+        recipe_category: editedCategory || undefined,
+        recipe_cuisine: editedCuisine || undefined,
+      });
+      setIsEditingMetadata(false);
+    } catch (err) {
+      alert('Failed to save category and cuisine. Please try again.');
+      console.error('Error saving metadata:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm print:hidden">
@@ -176,16 +226,79 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           )}
 
           {/* Metadata - hide on print since we show it in print header */}
-          <div className="flex flex-wrap gap-3 mb-8 print:hidden">
-            {recipe.recipe_category && (
-              <span className="px-4 py-2 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-                {recipe.recipe_category.charAt(0).toUpperCase() + recipe.recipe_category.slice(1)}
-              </span>
-            )}
-            {recipe.recipe_cuisine && (
-              <span className="px-4 py-2 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                {recipe.recipe_cuisine}
-              </span>
+          <div className="mb-8 print:hidden">
+            {isEditingMetadata ? (
+              <div className="space-y-4 p-4 border border-gray-300 rounded-lg bg-gray-50">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={editedCategory}
+                    onChange={(e) => setEditedCategory(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select category...</option>
+                    <option value="main">Main</option>
+                    <option value="side">Side</option>
+                    <option value="appetizer">Appetizer</option>
+                    <option value="dessert">Dessert</option>
+                    <option value="breakfast">Breakfast</option>
+                    <option value="bread">Bread</option>
+                    <option value="soup">Soup</option>
+                    <option value="salad">Salad</option>
+                    <option value="condiment">Condiment</option>
+                    <option value="drink">Drink</option>
+                    <option value="snack">Snack</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cuisine</label>
+                  <input
+                    type="text"
+                    value={editedCuisine}
+                    onChange={(e) => setEditedCuisine(e.target.value)}
+                    placeholder="e.g., Italian, Japanese, Mexican"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveMetadata}
+                    disabled={isSaving}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors disabled:bg-gray-400"
+                  >
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={handleCancelMetadataEdit}
+                    disabled={isSaving}
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md font-medium transition-colors disabled:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-3 items-center">
+                {recipe.recipe_category && (
+                  <span className="px-4 py-2 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                    {recipe.recipe_category.charAt(0).toUpperCase() + recipe.recipe_category.slice(1)}
+                  </span>
+                )}
+                {recipe.recipe_cuisine && (
+                  <span className="px-4 py-2 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+                    {recipe.recipe_cuisine}
+                  </span>
+                )}
+                <button
+                  onClick={handleEditMetadata}
+                  className="text-gray-500 hover:text-gray-700 p-1"
+                  title="Edit category and cuisine"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+              </div>
             )}
           </div>
 

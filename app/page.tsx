@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Recipe } from '@/lib/db';
+import { CUISINE_HIERARCHY, getParentCuisines } from '@/lib/cuisine-hierarchy';
 
 export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -142,7 +143,14 @@ export default function Home() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">All Cuisines</option>
-                {cuisines.map((cui) => (
+                {/* Parent cuisines */}
+                {getParentCuisines().map((parent) => (
+                  <option key={parent} value={parent}>
+                    {parent} (All)
+                  </option>
+                ))}
+                {/* Individual cuisines from the database */}
+                {cuisines.filter((cui) => !getParentCuisines().includes(cui)).map((cui) => (
                   <option key={cui} value={cui}>
                     {cui}
                   </option>

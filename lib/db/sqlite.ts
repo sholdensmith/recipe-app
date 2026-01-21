@@ -122,6 +122,7 @@ export function searchRecipesByIngredient(ingredient: string): Recipe[] {
 export function filterRecipes(filters: {
   category?: string;
   cuisine?: string;
+  cuisines?: string[]; // Support multiple cuisines for hierarchy filtering
   search?: string;
 }): Recipe[] {
   const db = getDb();
@@ -133,7 +134,12 @@ export function filterRecipes(filters: {
     params.push(filters.category);
   }
 
-  if (filters.cuisine) {
+  if (filters.cuisines && filters.cuisines.length > 0) {
+    // Support filtering by multiple cuisines (for parent cuisine matching)
+    const placeholders = filters.cuisines.map(() => '?').join(', ');
+    query += ` AND recipe_cuisine IN (${placeholders})`;
+    params.push(...filters.cuisines);
+  } else if (filters.cuisine) {
     query += ' AND recipe_cuisine = ?';
     params.push(filters.cuisine);
   }
@@ -142,12 +148,17 @@ export function filterRecipes(filters: {
     // Add prefix wildcard for partial matching (e.g., "bulg" matches "bulgur")
     const searchTerm = filters.search.trim() + '*';
 
+    const categoryFilter = filters.category ? 'AND recipe_category = ?' : '';
+    const cuisineFilter = filters.cuisines && filters.cuisines.length > 0
+      ? `AND recipe_cuisine IN (${filters.cuisines.map(() => '?').join(', ')})`
+      : filters.cuisine ? 'AND recipe_cuisine = ?' : '';
+
     query = `
       SELECT recipes.* FROM recipes
       JOIN recipes_fts ON recipes.id = recipes_fts.rowid
       WHERE recipes_fts MATCH ?
-      ${filters.category ? 'AND recipe_category = ?' : ''}
-      ${filters.cuisine ? 'AND recipe_cuisine = ?' : ''}
+      ${categoryFilter}
+      ${cuisineFilter}
       ORDER BY rank
     `;
     params.unshift(searchTerm);

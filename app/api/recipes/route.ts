@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllRecipes, insertRecipe, filterRecipes, getCategories, getCuisines } from '@/lib/db';
+import { getCuisinesForFilter } from '@/lib/cuisine-hierarchy';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +22,9 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || undefined;
 
     if (category || cuisine || search) {
-      const recipes = await filterRecipes({ category, cuisine, search });
+      // If cuisine is specified, expand it to include child cuisines
+      const cuisines = cuisine ? getCuisinesForFilter(cuisine) : undefined;
+      const recipes = await filterRecipes({ category, cuisines, search });
       return NextResponse.json(recipes);
     }
 

@@ -37,8 +37,25 @@ Extract the following fields:
 - cook_time: Cooking time in minutes (optional, number only)
 - total_time: Total time in minutes (optional, number only)
 - servings: Number of servings as a string (e.g., "4", "6-8 servings")
-- recipe_category: Type of meal (e.g., "dessert", "main", "appetizer", "side", "veggie", "breakfast", "lunch", "dinner", "snack")
-- recipe_cuisine: Cuisine type (e.g., "Italian", "Mexican", "Thai", "American", "French", "Indian", "Chinese", "Japanese")
+- recipe_category: Type of dish - choose the MOST SPECIFIC category that applies:
+  * "main" - Main course dishes (entrees, casseroles, etc.)
+  * "side" - Side dishes (roasted vegetables, rice dishes, etc.)
+  * "appetizer" - Appetizers and starters
+  * "dessert" - Desserts and sweets
+  * "breakfast" - Breakfast dishes
+  * "bread" - Bread, rolls, biscuits, muffins, and other baked goods
+  * "soup" - Soups, stews, and chilis (NOT main course, even if hearty)
+  * "salad" - Salads (NOT side, even if served as one)
+  * "condiment" - Sauces, dressings, spreads, salsas, and condiments (NOT side)
+  * "drink" - Beverages and cocktails
+  * "snack" - Snacks and small bites
+- recipe_cuisine: Cuisine type - use SPECIFIC cuisines when possible (e.g., "Japanese" not "Asian", "Italian" not "European"):
+  * Asian cuisines: Japanese, Chinese, Thai, Korean, Vietnamese, Indian, Filipino, etc.
+  * European cuisines: Italian, French, Spanish, Greek, German, British, etc.
+  * Americas: Mexican, American, Brazilian, Peruvian, etc.
+  * Middle Eastern: Lebanese, Turkish, Israeli, etc.
+  * African cuisines: Ethiopian, Moroccan, etc.
+  * Only use broad terms like "Asian" or "European" if the recipe is a fusion or doesn't fit a specific country
 - ingredients: Array of ingredient strings, each on a separate line as written
 - instructions: Array of step strings, numbered or separated
 - notes: Any additional notes, tips, or variations (optional)
@@ -51,7 +68,7 @@ Return ONLY valid JSON in this exact format:
   "cook_time": 30,
   "total_time": 45,
   "servings": "4 servings",
-  "recipe_category": "main",
+  "recipe_category": "bread",
   "recipe_cuisine": "Italian",
   "ingredients": ["ingredient 1", "ingredient 2"],
   "instructions": ["Step 1", "Step 2"],
