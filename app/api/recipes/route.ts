@@ -20,11 +20,12 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') || undefined;
     const cuisine = searchParams.get('cuisine') || undefined;
     const search = searchParams.get('search') || undefined;
+    const favorites = searchParams.get('favorites') === 'true';
 
-    if (category || cuisine || search) {
+    if (category || cuisine || search || favorites) {
       // If cuisine is specified, expand it to include child cuisines
       const cuisines = cuisine ? getCuisinesForFilter(cuisine) : undefined;
-      const recipes = await filterRecipes({ category, cuisines, search });
+      const recipes = await filterRecipes({ category, cuisines, search, favorites });
       return NextResponse.json(recipes);
     }
 

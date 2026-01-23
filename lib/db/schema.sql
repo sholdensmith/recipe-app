@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   image_url TEXT,
   source_url TEXT,
   raw_text TEXT, -- Original raw recipe text
+  is_favorite INTEGER DEFAULT 0, -- 1 if starred/favorited, 0 otherwise
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

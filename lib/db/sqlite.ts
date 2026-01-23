@@ -124,10 +124,15 @@ export function filterRecipes(filters: {
   cuisine?: string;
   cuisines?: string[]; // Support multiple cuisines for hierarchy filtering
   search?: string;
+  favorites?: boolean;
 }): Recipe[] {
   const db = getDb();
   let query = 'SELECT * FROM recipes WHERE 1=1';
   const params: any[] = [];
+
+  if (filters.favorites) {
+    query += ' AND is_favorite = 1';
+  }
 
   if (filters.category) {
     query += ' AND recipe_category = ?';
@@ -148,6 +153,7 @@ export function filterRecipes(filters: {
     // Add prefix wildcard for partial matching (e.g., "bulg" matches "bulgur")
     const searchTerm = filters.search.trim() + '*';
 
+    const favoritesFilter = filters.favorites ? 'AND is_favorite = 1' : '';
     const categoryFilter = filters.category ? 'AND recipe_category = ?' : '';
     const cuisineFilter = filters.cuisines && filters.cuisines.length > 0
       ? `AND recipe_cuisine IN (${filters.cuisines.map(() => '?').join(', ')})`
@@ -157,6 +163,7 @@ export function filterRecipes(filters: {
       SELECT recipes.* FROM recipes
       JOIN recipes_fts ON recipes.id = recipes_fts.rowid
       WHERE recipes_fts MATCH ?
+      ${favoritesFilter}
       ${categoryFilter}
       ${cuisineFilter}
       ORDER BY rank
@@ -252,6 +259,10 @@ export function updateRecipe(id: number, recipe: Partial<Recipe>): boolean {
   if (recipe.source_url !== undefined) {
     updates.push('source_url = @source_url');
     params.source_url = recipe.source_url;
+  }
+  if (recipe.is_favorite !== undefined) {
+    updates.push('is_favorite = @is_favorite');
+    params.is_favorite = recipe.is_favorite;
   }
 
   if (updates.length === 0) return false;
