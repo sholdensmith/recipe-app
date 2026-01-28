@@ -197,17 +197,19 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm print:hidden">
         <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-start">
-            <div>
-              <Link
-                href="/"
-                className="text-gray-600 hover:text-gray-900 inline-block mb-4"
-              >
-                ← Back to recipes
-              </Link>
-              <h1 className="text-4xl font-bold text-gray-900">{recipe.name}</h1>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <Link
+                  href="/"
+                  className="text-gray-600 hover:text-gray-900 inline-block mb-4"
+                >
+                  ← Back to recipes
+                </Link>
+                <h1 className="text-4xl font-bold text-gray-900 break-words">{recipe.name}</h1>
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleToggleFavorite}
                 className={`${recipe.is_favorite ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-200 hover:bg-gray-300'} text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2`}
