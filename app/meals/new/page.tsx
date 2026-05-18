@@ -1,19 +1,77 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Recipe, MealItemWithRecipe } from '@/lib/db';
+
+type MenuSlot =
+  | 'main'
+  | 'side'
+  | 'protein'
+  | 'carb'
+  | 'veg'
+  | 'salad'
+  | 'soup'
+  | 'bread'
+  | 'dessert'
+  | 'drink';
 
 interface DishSuggestion {
   name: string;
   rationale: string;
+  slot: MenuSlot;
   category: string;
   searchQuery: string;
+  matches?: Recipe[];
 }
 
-export default function NewMealPage() {
+const SLOT_ORDER: MenuSlot[] = [
+  'main',
+  'protein',
+  'side',
+  'carb',
+  'veg',
+  'salad',
+  'soup',
+  'bread',
+  'dessert',
+  'drink',
+];
+
+const SLOT_LABEL: Record<MenuSlot, string> = {
+  main: 'Main',
+  protein: 'Protein',
+  side: 'Side',
+  carb: 'Carb',
+  veg: 'Veg',
+  salad: 'Salad',
+  soup: 'Soup',
+  bread: 'Bread',
+  dessert: 'Dessert',
+  drink: 'Drink',
+};
+
+function slotToSimpleCategory(slot: MenuSlot): string {
+  switch (slot) {
+    case 'protein':
+    case 'main':
+      return 'protein';
+    case 'carb':
+    case 'bread':
+      return 'carb';
+    case 'veg':
+    case 'salad':
+      return 'veggie';
+    default:
+      return 'other';
+  }
+}
+
+function NewMealPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const seedRecipeId = searchParams.get('seedRecipeId');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [mealName, setMealName] = useState('');
   const [servings, setServings] = useState('');
@@ -27,6 +85,41 @@ export default function NewMealPage() {
   const [showSimpleItemForm, setShowSimpleItemForm] = useState(false);
   const [simpleItemName, setSimpleItemName] = useState('');
   const [simpleItemCategory, setSimpleItemCategory] = useState('carb');
+
+  // Seed from URL param (?seedRecipeId=...)
+  useEffect(() => {
+    if (!seedRecipeId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`/api/recipes/${seedRecipeId}`);
+        if (!response.ok) return;
+        const recipe: Recipe = await response.json();
+        if (cancelled || !recipe?.id) return;
+        setMealItems((prev) => {
+          if (prev.some((p) => p.item_type === 'recipe' && p.recipe_id === recipe.id)) {
+            return prev;
+          }
+          return [
+            ...prev,
+            {
+              meal_id: 0,
+              item_type: 'recipe',
+              recipe_id: recipe.id,
+              recipe,
+              order_index: prev.length,
+            },
+          ];
+        });
+        setMealName((prev) => prev || `Menu with ${recipe.name}`);
+      } catch (err) {
+        console.error('Error loading seed recipe:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [seedRecipeId]);
 
   // Auto-generate suggestions when meal items change
   useEffect(() => {
@@ -44,6 +137,7 @@ export default function NewMealPage() {
         if (item.item_type === 'recipe' && item.recipe) {
           return {
             type: 'recipe' as const,
+            id: item.recipe.id,
             name: item.recipe.name,
             category: item.recipe.recipe_category,
             cuisine: item.recipe.recipe_cuisine,
@@ -381,7 +475,7 @@ export default function NewMealPage() {
             {/* AI Suggestions */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">AI Suggestions</h2>
+                <h2 className="text-xl font-semibold">Suggested menu</h2>
                 {suggestionsLoading && (
                   <span className="text-sm text-gray-500">Thinking...</span>
                 )}
@@ -389,42 +483,133 @@ export default function NewMealPage() {
 
               {mealItems.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  Add items to get AI suggestions for complementary dishes
+                  Add items to get suggestions for complementary dishes
                 </p>
               ) : suggestions.length === 0 && !suggestionsLoading ? (
                 <p className="text-sm text-gray-500">No suggestions available</p>
               ) : (
-                <div className="space-y-3">
-                  {suggestions.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className="p-4 border border-blue-200 bg-blue-50 rounded-lg"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="font-medium text-gray-900">
-                          {suggestion.name}
-                        </p>
-                        <span className="px-2 py-1 bg-blue-200 text-blue-800 text-xs rounded">
-                          {suggestion.category}
-                        </span>
+                <div className="space-y-6">
+                  {SLOT_ORDER.filter((slot) =>
+                    suggestions.some((s) => s.slot === slot)
+                  ).map((slot) => {
+                    const slotSuggestions = suggestions.filter((s) => s.slot === slot);
+                    return (
+                      <div key={slot}>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                          {SLOT_LABEL[slot]}
+                        </h3>
+                        <div className="space-y-3">
+                          {slotSuggestions.map((suggestion, index) => {
+                            const hasMatches = (suggestion.matches?.length ?? 0) > 0;
+                            return (
+                              <div
+                                key={`${slot}-${index}`}
+                                className={`p-4 border rounded-lg ${
+                                  hasMatches
+                                    ? 'border-green-200 bg-green-50'
+                                    : 'border-blue-200 bg-blue-50'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between mb-1 gap-2">
+                                  <p className="font-medium text-gray-900">
+                                    {suggestion.name}
+                                  </p>
+                                  <span
+                                    className={`px-2 py-1 text-xs rounded whitespace-nowrap ${
+                                      hasMatches
+                                        ? 'bg-green-200 text-green-800'
+                                        : 'bg-blue-200 text-blue-800'
+                                    }`}
+                                  >
+                                    {hasMatches ? 'In your recipes' : 'Idea to try'}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-700 mb-3">
+                                  {suggestion.rationale}
+                                </p>
+
+                                {hasMatches ? (
+                                  <div className="space-y-2">
+                                    {suggestion.matches!.map((match) => (
+                                      <div
+                                        key={match.id}
+                                        className="flex items-center justify-between gap-3 p-2 bg-white border border-green-200 rounded"
+                                      >
+                                        <div className="min-w-0">
+                                          <p className="font-medium text-gray-900 truncate">
+                                            {match.name}
+                                          </p>
+                                          <p className="text-xs text-gray-500 truncate">
+                                            {[match.recipe_category, match.recipe_cuisine]
+                                              .filter(Boolean)
+                                              .join(' • ')}
+                                          </p>
+                                        </div>
+                                        <button
+                                          onClick={() => addRecipeToMeal(match)}
+                                          disabled={mealItems.some(
+                                            (m) =>
+                                              m.item_type === 'recipe' &&
+                                              m.recipe_id === match.id
+                                          )}
+                                          className="text-xs font-medium px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded whitespace-nowrap"
+                                        >
+                                          {mealItems.some(
+                                            (m) =>
+                                              m.item_type === 'recipe' &&
+                                              m.recipe_id === match.id
+                                          )
+                                            ? 'Added'
+                                            : 'Add'}
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      onClick={() => {
+                                        const newItem: MealItemWithRecipe = {
+                                          meal_id: 0,
+                                          item_type: 'simple',
+                                          simple_item_name: suggestion.name,
+                                          simple_item_category: slotToSimpleCategory(
+                                            suggestion.slot
+                                          ),
+                                          order_index: mealItems.length,
+                                        };
+                                        setMealItems([...mealItems, newItem]);
+                                      }}
+                                      className="text-xs font-medium px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                                    >
+                                      Add as simple item
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setSearchQuery(suggestion.searchQuery);
+                                        searchRecipes(suggestion.searchQuery);
+                                        searchInputRef.current?.scrollIntoView({
+                                          behavior: 'smooth',
+                                          block: 'center',
+                                        });
+                                        setTimeout(
+                                          () => searchInputRef.current?.focus(),
+                                          500
+                                        );
+                                      }}
+                                      className="text-xs font-medium px-3 py-1 border border-blue-300 text-blue-700 hover:bg-blue-100 rounded"
+                                    >
+                                      Search recipes
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-700 mb-2">
-                        {suggestion.rationale}
-                      </p>
-                      <button
-                        onClick={() => {
-                          setSearchQuery(suggestion.searchQuery);
-                          searchRecipes(suggestion.searchQuery);
-                          // Scroll to and focus the search input
-                          searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          setTimeout(() => searchInputRef.current?.focus(), 500);
-                        }}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Search for this →
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -432,5 +617,13 @@ export default function NewMealPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function NewMealPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewMealPageContent />
+    </Suspense>
   );
 }

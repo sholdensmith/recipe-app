@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { suggestComplementaryDishes } from '@/lib/ai/suggest-dishes';
-import { getAllRecipes } from '@/lib/db';
+import { getAllRecipes, filterRecipes } from '@/lib/db';
+
+const MAX_MATCHES_PER_SUGGESTION = 3;
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +22,31 @@ export async function POST(request: NextRequest) {
       availableRecipes
     );
 
-    return NextResponse.json({ suggestions });
+    const seedRecipeIds = new Set<number>();
+    for (const item of currentItems) {
+      if (item.type === 'recipe' && typeof item.id === 'number') {
+        seedRecipeIds.add(item.id);
+      }
+    }
+
+    const enriched = await Promise.all(
+      suggestions.map(async (s) => {
+        const query = (s.searchQuery || s.name || '').trim();
+        if (!query) return { ...s, matches: [] };
+        try {
+          const found = await filterRecipes({ search: query });
+          const matches = found
+            .filter((r) => r.id !== undefined && !seedRecipeIds.has(r.id))
+            .slice(0, MAX_MATCHES_PER_SUGGESTION);
+          return { ...s, matches };
+        } catch (err) {
+          console.error('Error resolving suggestion match:', err);
+          return { ...s, matches: [] };
+        }
+      })
+    );
+
+    return NextResponse.json({ suggestions: enriched });
   } catch (error) {
     console.error('Error generating suggestions:', error);
     return NextResponse.json(

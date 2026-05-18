@@ -249,6 +249,16 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
                 </svg>
                 <span className="pointer-events-none">Print</span>
               </button>
+              <button
+                onClick={() => router.push(`/meals/new?seedRecipeId=${id}`)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
+                title="Build a menu around this recipe"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h16M19 9v6" />
+                </svg>
+                <span className="pointer-events-none">Build menu</span>
+              </button>
             </div>
           </div>
         </div>
