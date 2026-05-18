@@ -113,6 +113,13 @@ export default function Home() {
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">Smith Family Recipes</h1>
             <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { window.location.href = '/api/recipes/export'; }}
+                className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Export
+              </button>
               <Link
                 href="/meals"
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
