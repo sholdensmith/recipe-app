@@ -1,18 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Recipe } from '@/lib/db';
 import { CUISINE_HIERARCHY, getParentCuisines } from '@/lib/cuisine-hierarchy';
 
-export default function Home() {
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [cuisines, setCuisines] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedCuisine, setSelectedCuisine] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') ?? '');
+  const [selectedCuisine, setSelectedCuisine] = useState<string>(searchParams.get('cuisine') ?? '');
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') ?? '');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(searchParams.get('favorites') === 'true');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,6 +28,16 @@ export default function Home() {
   useEffect(() => {
     fetchRecipes();
   }, [selectedCategory, selectedCuisine, searchQuery, showFavoritesOnly]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedCuisine) params.set('cuisine', selectedCuisine);
+    if (searchQuery) params.set('search', searchQuery);
+    if (showFavoritesOnly) params.set('favorites', 'true');
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : '/', { scroll: false });
+  }, [selectedCategory, selectedCuisine, searchQuery, showFavoritesOnly, router]);
 
   const fetchRecipes = async () => {
     setLoading(true);
@@ -315,5 +329,13 @@ export default function Home() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
