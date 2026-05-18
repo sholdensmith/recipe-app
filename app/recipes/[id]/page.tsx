@@ -2,10 +2,20 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Recipe } from '@/lib/db';
 
 export default function RecipePage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const { id } = use(params);
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -200,12 +210,13 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           <div className="flex flex-col gap-4">
             <div className="flex justify-between items-start gap-4">
               <div className="flex-1 min-w-0">
-                <Link
-                  href="/"
-                  className="text-gray-600 hover:text-gray-900 inline-block mb-4"
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="text-gray-600 hover:text-gray-900 inline-block mb-4 cursor-pointer bg-transparent border-none p-0"
                 >
                   ← Back to recipes
-                </Link>
+                </button>
                 <h1 className="text-4xl font-bold text-gray-900 break-words">{recipe.name}</h1>
               </div>
             </div>
