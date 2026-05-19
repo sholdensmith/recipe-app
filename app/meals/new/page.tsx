@@ -504,103 +504,91 @@ function NewMealPageContent() {
                             return (
                               <div
                                 key={`${slot}-${index}`}
-                                className={`p-4 border rounded-lg ${
-                                  hasMatches
-                                    ? 'border-green-200 bg-green-50'
-                                    : 'border-blue-200 bg-blue-50'
-                                }`}
+                                className="p-4 border border-blue-200 bg-blue-50 rounded-lg"
                               >
                                 <div className="flex items-start justify-between mb-1 gap-2">
                                   <p className="font-medium text-gray-900">
                                     {suggestion.name}
                                   </p>
-                                  <span
-                                    className={`px-2 py-1 text-xs rounded whitespace-nowrap ${
-                                      hasMatches
-                                        ? 'bg-green-200 text-green-800'
-                                        : 'bg-blue-200 text-blue-800'
-                                    }`}
-                                  >
-                                    {hasMatches ? 'In your recipes' : 'Idea to try'}
+                                  <span className="px-2 py-1 text-xs rounded whitespace-nowrap bg-blue-200 text-blue-800">
+                                    Idea
                                   </span>
                                 </div>
                                 <p className="text-sm text-gray-700 mb-3">
                                   {suggestion.rationale}
                                 </p>
 
-                                {hasMatches ? (
-                                  <div className="space-y-2">
-                                    {suggestion.matches!.map((match) => (
-                                      <div
-                                        key={match.id}
-                                        className="flex items-center justify-between gap-3 p-2 bg-white border border-green-200 rounded"
-                                      >
-                                        <div className="min-w-0">
-                                          <p className="font-medium text-gray-900 truncate">
-                                            {match.name}
-                                          </p>
-                                          <p className="text-xs text-gray-500 truncate">
-                                            {[match.recipe_category, match.recipe_cuisine]
-                                              .filter(Boolean)
-                                              .join(' • ')}
-                                          </p>
-                                        </div>
-                                        <button
-                                          onClick={() => addRecipeToMeal(match)}
-                                          disabled={mealItems.some(
-                                            (m) =>
-                                              m.item_type === 'recipe' &&
-                                              m.recipe_id === match.id
-                                          )}
-                                          className="text-xs font-medium px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded whitespace-nowrap"
-                                        >
-                                          {mealItems.some(
-                                            (m) =>
-                                              m.item_type === 'recipe' &&
-                                              m.recipe_id === match.id
-                                          )
-                                            ? 'Added'
-                                            : 'Add'}
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-wrap gap-2">
-                                    <button
-                                      onClick={() => {
-                                        const newItem: MealItemWithRecipe = {
-                                          meal_id: 0,
-                                          item_type: 'simple',
-                                          simple_item_name: suggestion.name,
-                                          simple_item_category: slotToSimpleCategory(
-                                            suggestion.slot
-                                          ),
-                                          order_index: mealItems.length,
-                                        };
-                                        setMealItems([...mealItems, newItem]);
-                                      }}
-                                      className="text-xs font-medium px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
-                                    >
-                                      Add as simple item
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setSearchQuery(suggestion.searchQuery);
-                                        searchRecipes(suggestion.searchQuery);
-                                        searchInputRef.current?.scrollIntoView({
-                                          behavior: 'smooth',
-                                          block: 'center',
-                                        });
-                                        setTimeout(
-                                          () => searchInputRef.current?.focus(),
-                                          500
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => {
+                                      const newItem: MealItemWithRecipe = {
+                                        meal_id: 0,
+                                        item_type: 'simple',
+                                        simple_item_name: suggestion.name,
+                                        simple_item_category: slotToSimpleCategory(
+                                          suggestion.slot
+                                        ),
+                                        order_index: mealItems.length,
+                                      };
+                                      setMealItems([...mealItems, newItem]);
+                                    }}
+                                    className="text-xs font-medium px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                                  >
+                                    Add as simple item
+                                  </button>
+                                  <a
+                                    href={`https://www.google.com/search?q=${encodeURIComponent(
+                                      `${suggestion.name} recipe`
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-medium px-3 py-1 border border-blue-300 text-blue-700 hover:bg-blue-100 rounded"
+                                  >
+                                    Search recipes
+                                  </a>
+                                </div>
+
+                                {hasMatches && (
+                                  <div className="mt-3 pt-3 border-t border-blue-200">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                                      Related in your recipes
+                                    </p>
+                                    <div className="space-y-2">
+                                      {suggestion.matches!.map((match) => {
+                                        const alreadyAdded = mealItems.some(
+                                          (m) =>
+                                            m.item_type === 'recipe' &&
+                                            m.recipe_id === match.id
                                         );
-                                      }}
-                                      className="text-xs font-medium px-3 py-1 border border-blue-300 text-blue-700 hover:bg-blue-100 rounded"
-                                    >
-                                      Search recipes
-                                    </button>
+                                        return (
+                                          <div
+                                            key={match.id}
+                                            className="flex items-center justify-between gap-3 p-2 bg-white border border-green-200 rounded"
+                                          >
+                                            <div className="min-w-0">
+                                              <p className="font-medium text-gray-900 truncate">
+                                                {match.name}
+                                              </p>
+                                              <p className="text-xs text-gray-500 truncate">
+                                                {[
+                                                  match.recipe_category,
+                                                  match.recipe_cuisine,
+                                                ]
+                                                  .filter(Boolean)
+                                                  .join(' • ')}
+                                              </p>
+                                            </div>
+                                            <button
+                                              onClick={() => addRecipeToMeal(match)}
+                                              disabled={alreadyAdded}
+                                              className="text-xs font-medium px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded whitespace-nowrap"
+                                            >
+                                              {alreadyAdded ? 'Added' : 'Add'}
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 )}
                               </div>
