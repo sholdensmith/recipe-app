@@ -7,6 +7,7 @@ import { Meal } from '@/lib/db';
 export default function MealsPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMeals();
@@ -16,9 +17,17 @@ export default function MealsPage() {
     try {
       const response = await fetch('/api/meals');
       const data = await response.json();
+      if (!response.ok || !Array.isArray(data)) {
+        const message =
+          (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
+            ? data.error
+            : null) || `Request failed (${response.status})`;
+        throw new Error(message);
+      }
       setMeals(data);
-    } catch (error) {
-      console.error('Error fetching meals:', error);
+    } catch (err) {
+      console.error('Error fetching meals:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load meals');
     } finally {
       setLoading(false);
     }
@@ -49,6 +58,21 @@ export default function MealsPage() {
         {loading ? (
           <div className="text-center py-12">
             <p className="text-gray-500">Loading meals...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+            <p className="text-red-600 mb-2 font-medium">Couldn&apos;t load meals</p>
+            <p className="text-sm text-gray-500 mb-4">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                fetchMeals();
+              }}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Try again
+            </button>
           </div>
         ) : meals.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm">
