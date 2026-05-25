@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Meal } from '@/lib/db';
+import PageHeader from '../_components/PageHeader';
 
 export default function MealsPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -35,24 +36,18 @@ export default function MealsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="text-gray-600 hover:text-gray-900">
-                ← Recipes
-              </Link>
-              <h1 className="text-3xl font-bold text-gray-900">My Meals</h1>
-            </div>
-            <Link
-              href="/meals/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              Plan New Meal
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="My Meals"
+        back={{ label: 'Recipes', href: '/' }}
+        actions={
+          <Link
+            href="/meals/new"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Plan New Meal
+          </Link>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {loading ? (

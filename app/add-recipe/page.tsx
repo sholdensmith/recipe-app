@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PageHeader from '../_components/PageHeader';
 
 export default function AddRecipe() {
   const router = useRouter();
@@ -48,19 +49,11 @@ export default function AddRecipe() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-gray-600 hover:text-gray-900"
-            >
-              ← Back
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Add New Recipe</h1>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="Add New Recipe"
+        back={{ label: 'Recipes', href: '/' }}
+        maxWidth="4xl"
+      />
 
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm p-8">

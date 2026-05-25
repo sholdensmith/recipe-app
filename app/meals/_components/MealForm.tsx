@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
 import { Recipe, MealItemWithRecipe } from '@/lib/db';
+import PageHeader from '../../_components/PageHeader';
 
 type MenuSlot =
   | 'main'
@@ -285,16 +285,10 @@ export default function MealForm({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <Link href="/meals" className="text-gray-600 hover:text-gray-900">
-              ← Back to Meals
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">{headerTitle}</h1>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title={headerTitle}
+        back={{ label: 'My Meals', href: '/meals' }}
+      />
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

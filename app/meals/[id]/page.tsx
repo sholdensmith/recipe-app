@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MealWithItems } from '@/lib/db';
+import PageHeader from '../../_components/PageHeader';
 
 export default function MealDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -88,32 +89,27 @@ export default function MealDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      <header className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-start">
-            <div>
-              <Link href="/meals" className="text-gray-600 hover:text-gray-900 inline-block mb-4">
-                ← Back to Meals
-              </Link>
-              <h1 className="text-4xl font-bold text-gray-900">{meal.name}</h1>
-            </div>
-            <div className="flex gap-2">
-              <Link
-                href={`/meals/${id}/edit`}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                Edit
-              </Link>
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title={meal.name}
+        back={{ label: 'My Meals', href: '/meals' }}
+        maxWidth="4xl"
+        actions={
+          <>
+            <Link
+              href={`/meals/${id}/edit`}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+            >
+              Edit
+            </Link>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+            >
+              Delete
+            </button>
+          </>
+        }
+      />
 
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm p-8">

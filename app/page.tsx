@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Recipe } from '@/lib/db';
 import { CUISINE_HIERARCHY, getParentCuisines } from '@/lib/cuisine-hierarchy';
+import PageHeader from './_components/PageHeader';
 
 function HomeContent() {
   const router = useRouter();
@@ -122,34 +123,20 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900">Smith Family Recipes</h1>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => { window.location.href = '/api/recipes/export'; }}
-                className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Export
-              </button>
-              <Link
-                href="/meals"
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                My Meals
-              </Link>
-              <Link
-                href="/add-recipe"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Add Recipe
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="Recipes"
+        actions={
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = '/api/recipes/export';
+            }}
+            className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Export
+          </button>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Filters */}
