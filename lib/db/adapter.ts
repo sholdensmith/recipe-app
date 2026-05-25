@@ -33,6 +33,7 @@ export const deleteMeal = dbImpl.deleteMeal;
 export const insertMealItem = dbImpl.insertMealItem;
 export const getMealItems = dbImpl.getMealItems;
 export const getMealWithItems = dbImpl.getMealWithItems;
+export const updateMealItem = dbImpl.updateMealItem;
 export const deleteMealItem = dbImpl.deleteMealItem;
 
 // Re-export types

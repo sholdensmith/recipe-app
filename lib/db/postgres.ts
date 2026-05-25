@@ -327,3 +327,29 @@ export async function deleteMealItem(id: number): Promise<boolean> {
   const result = await sql`DELETE FROM meal_items WHERE id = ${id}`;
   return (result.rowCount ?? 0) > 0;
 }
+
+export async function updateMealItem(id: number, item: Partial<MealItem>): Promise<boolean> {
+  const updates: string[] = [];
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  if (item.simple_item_name !== undefined) {
+    updates.push(`simple_item_name = $${paramIndex++}`);
+    params.push(item.simple_item_name);
+  }
+  if (item.simple_item_category !== undefined) {
+    updates.push(`simple_item_category = $${paramIndex++}`);
+    params.push(item.simple_item_category);
+  }
+  if (item.order_index !== undefined) {
+    updates.push(`order_index = $${paramIndex++}`);
+    params.push(item.order_index);
+  }
+
+  if (updates.length === 0) return false;
+
+  params.push(id);
+  const query = `UPDATE meal_items SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+  const result = await sql.query(query, params);
+  return (result.rowCount ?? 0) > 0;
+}

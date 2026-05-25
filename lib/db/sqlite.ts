@@ -481,3 +481,28 @@ export function deleteMealItem(id: number): boolean {
   const result = stmt.run(id);
   return result.changes > 0;
 }
+
+export function updateMealItem(id: number, item: Partial<MealItem>): boolean {
+  const db = getDb();
+  const updates: string[] = [];
+  const params: any = { id };
+
+  if (item.simple_item_name !== undefined) {
+    updates.push('simple_item_name = @simple_item_name');
+    params.simple_item_name = item.simple_item_name;
+  }
+  if (item.simple_item_category !== undefined) {
+    updates.push('simple_item_category = @simple_item_category');
+    params.simple_item_category = item.simple_item_category;
+  }
+  if (item.order_index !== undefined) {
+    updates.push('order_index = @order_index');
+    params.order_index = item.order_index;
+  }
+
+  if (updates.length === 0) return false;
+
+  const stmt = db.prepare(`UPDATE meal_items SET ${updates.join(', ')} WHERE id = @id`);
+  const result = stmt.run(params);
+  return result.changes > 0;
+}

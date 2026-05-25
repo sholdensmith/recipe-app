@@ -29,4 +29,5 @@ export const getMealWithItems = db.getMealWithItems;
 
 export const getMealItems = db.getMealItems;
 export const insertMealItem = db.insertMealItem;
+export const updateMealItem = db.updateMealItem;
 export const deleteMealItem = db.deleteMealItem;

@@ -97,12 +97,20 @@ export default function MealDetailPage({ params }: { params: Promise<{ id: strin
               </Link>
               <h1 className="text-4xl font-bold text-gray-900">{meal.name}</h1>
             </div>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
-            >
-              Delete
-            </button>
+            <div className="flex gap-2">
+              <Link
+                href={`/meals/${id}/edit`}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                Edit
+              </Link>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       </header>
