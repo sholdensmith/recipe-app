@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MealWithItems } from '@/lib/db';
 import MealForm, { MealFormSubmitPayload } from '../../_components/MealForm';
+import Toast from '../../../_components/Toast';
 
 export default function EditMealPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -11,6 +12,7 @@ export default function EditMealPage({ params }: { params: Promise<{ id: string 
   const [meal, setMeal] = useState<MealWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +88,7 @@ export default function EditMealPage({ params }: { params: Promise<{ id: string 
       router.push(`/meals/${id}`);
     } catch (error) {
       console.error('Error updating meal:', error);
-      alert('Failed to update meal');
+      setToast('Failed to update meal. Please try again.');
     }
   };
 
@@ -107,15 +109,18 @@ export default function EditMealPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <MealForm
-      headerTitle={`Edit ${meal.name}`}
-      submitLabel="Update Meal"
-      submittingLabel="Updating..."
-      initialName={meal.name}
-      initialServings={meal.servings ?? ''}
-      initialNotes={meal.notes ?? ''}
-      initialItems={meal.items}
-      onSubmit={handleSubmit}
-    />
+    <>
+      <MealForm
+        headerTitle={`Edit ${meal.name}`}
+        submitLabel="Update Meal"
+        submittingLabel="Updating..."
+        initialName={meal.name}
+        initialServings={meal.servings ?? ''}
+        initialNotes={meal.notes ?? ''}
+        initialItems={meal.items}
+        onSubmit={handleSubmit}
+      />
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+    </>
   );
 }

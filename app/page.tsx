@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Recipe } from '@/lib/db';
 import { CUISINE_HIERARCHY, getParentCuisines } from '@/lib/cuisine-hierarchy';
 import PageHeader from './_components/PageHeader';
+import Toast from './_components/Toast';
 
 function HomeContent() {
   const router = useRouter();
@@ -16,15 +17,22 @@ function HomeContent() {
   const [cuisines, setCuisines] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') ?? '');
   const [selectedCuisine, setSelectedCuisine] = useState<string>(searchParams.get('cuisine') ?? '');
+  const [searchInput, setSearchInput] = useState<string>(searchParams.get('search') ?? '');
   const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') ?? '');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(searchParams.get('favorites') === 'true');
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchRecipes();
     fetchCategories();
     fetchCuisines();
   }, []);
+
+  // Debounce search input so we don't hit the API on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     fetchRecipes();
@@ -116,7 +124,7 @@ function HomeContent() {
       setRecipes(recipes.map(r =>
         r.id === recipeId ? { ...r, is_favorite: !newFavoriteState } : r
       ));
-      alert('Failed to update favorite status. Please try again.');
+      setToast('Failed to update favorite status. Please try again.');
       console.error('Error updating favorite:', err);
     }
   };
@@ -171,8 +179,8 @@ function HomeContent() {
               <input
                 id="search"
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="e.g., chicken, tomato..."
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
               />
@@ -224,11 +232,12 @@ function HomeContent() {
             </div>
           </div>
 
-          {(selectedCategory || selectedCuisine || searchQuery || showFavoritesOnly) && (
+          {(selectedCategory || selectedCuisine || searchInput || showFavoritesOnly) && (
             <button
               onClick={() => {
                 setSelectedCategory('');
                 setSelectedCuisine('');
+                setSearchInput('');
                 setSearchQuery('');
                 setShowFavoritesOnly(false);
               }}
@@ -315,6 +324,8 @@ function HomeContent() {
           </div>
         )}
       </main>
+
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

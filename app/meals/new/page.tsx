@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Recipe, MealItemWithRecipe } from '@/lib/db';
 import MealForm, { MealFormSubmitPayload } from '../_components/MealForm';
+import Toast from '../../_components/Toast';
 
 function NewMealPageContent() {
   const router = useRouter();
@@ -12,6 +13,7 @@ function NewMealPageContent() {
   const [initialName, setInitialName] = useState('');
   const [initialItems, setInitialItems] = useState<MealItemWithRecipe[]>([]);
   const [seedLoading, setSeedLoading] = useState(Boolean(seedRecipeId));
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!seedRecipeId) return;
@@ -72,21 +74,24 @@ function NewMealPageContent() {
       router.push(`/meals/${mealId}`);
     } catch (error) {
       console.error('Error saving meal:', error);
-      alert('Failed to save meal');
+      setToast('Failed to save meal. Please try again.');
     }
   };
 
   if (seedLoading) return null;
 
   return (
-    <MealForm
-      headerTitle="Plan New Meal"
-      submitLabel="Save Meal"
-      submittingLabel="Saving..."
-      initialName={initialName}
-      initialItems={initialItems}
-      onSubmit={handleSubmit}
-    />
+    <>
+      <MealForm
+        headerTitle="Plan New Meal"
+        submitLabel="Save Meal"
+        submittingLabel="Saving..."
+        initialName={initialName}
+        initialItems={initialItems}
+        onSubmit={handleSubmit}
+      />
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+    </>
   );
 }
 
