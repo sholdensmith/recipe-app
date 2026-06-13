@@ -113,6 +113,7 @@ export default function MealForm({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingCategory, setEditingCategory] = useState('other');
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Auto-generate suggestions when meal items change
   useEffect(() => {
@@ -161,6 +162,12 @@ export default function MealForm({
       setSuggestionsLoading(false);
     }
   };
+
+  // Debounce recipe search so we don't hit the API on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => searchRecipes(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const searchRecipes = async (query: string) => {
     if (!query.trim()) {
@@ -259,15 +266,16 @@ export default function MealForm({
 
   const handleSave = async () => {
     if (!mealName.trim()) {
-      alert('Please enter a meal name');
+      setFormError('Please enter a meal name');
       return;
     }
 
     if (mealItems.length === 0) {
-      alert('Please add at least one item to the meal');
+      setFormError('Please add at least one item to the meal');
       return;
     }
 
+    setFormError(null);
     setLoading(true);
     try {
       const normalized = mealItems.map((item, i) => ({ ...item, order_index: i }));
@@ -510,6 +518,12 @@ export default function MealForm({
               </div>
             </div>
 
+            {formError && (
+              <p className="text-sm text-red-600 font-medium" role="alert">
+                {formError}
+              </p>
+            )}
+
             <button
               onClick={handleSave}
               disabled={loading}
@@ -529,10 +543,7 @@ export default function MealForm({
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  searchRecipes(e.target.value);
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search recipes..."
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />

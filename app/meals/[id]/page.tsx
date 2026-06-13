@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MealWithItems } from '@/lib/db';
 import PageHeader from '../../_components/PageHeader';
+import Toast from '../../_components/Toast';
+import ConfirmDialog from '../../_components/ConfirmDialog';
 
 export default function MealDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -12,6 +14,7 @@ export default function MealDetailPage({ params }: { params: Promise<{ id: strin
   const [meal, setMeal] = useState<MealWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMeal();
@@ -38,11 +41,11 @@ export default function MealDetailPage({ params }: { params: Promise<{ id: strin
         router.push('/meals');
       } else {
         const errorData = await response.json();
-        alert(`Failed to delete meal: ${errorData.error || 'Unknown error'}`);
+        setToast(`Failed to delete meal: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error deleting meal:', error);
-      alert('Failed to delete meal. Please try again.');
+      setToast('Failed to delete meal. Please try again.');
     }
   };
 
@@ -60,34 +63,19 @@ export default function MealDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Delete Meal?</h2>
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to delete "{meal.name}"? This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  deleteMeal();
-                }}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Delete Meal?"
+          message={`Are you sure you want to delete "${meal.name}"? This action cannot be undone.`}
+          onConfirm={() => {
+            setShowDeleteConfirm(false);
+            deleteMeal();
+          }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       )}
+
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 
       <PageHeader
         title={meal.name}

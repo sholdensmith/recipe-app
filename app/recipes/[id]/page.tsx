@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Recipe } from '@/lib/db';
 import PageHeader from '../../_components/PageHeader';
+import Toast from '../../_components/Toast';
+import ConfirmDialog from '../../_components/ConfirmDialog';
 
 export default function RecipePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -26,6 +28,8 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
   const [editedCategory, setEditedCategory] = useState('');
   const [editedCuisine, setEditedCuisine] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     fetchRecipe();
@@ -72,10 +76,6 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${recipe.name}"? This action cannot be undone.`)) {
-      return;
-    }
-
     try {
       const response = await fetch(`/api/recipes/${id}`, {
         method: 'DELETE',
@@ -88,7 +88,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       // Redirect to home page after successful deletion
       window.location.href = '/';
     } catch (err) {
-      alert('Failed to delete recipe. Please try again.');
+      setToast('Failed to delete recipe. Please try again.');
       console.error('Error deleting recipe:', err);
     }
   };
@@ -124,7 +124,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       setRecipe({ ...recipe, notes: editedNotes });
       setIsEditingNotes(false);
     } catch (err) {
-      alert('Failed to save notes. Please try again.');
+      setToast('Failed to save notes. Please try again.');
       console.error('Error saving notes:', err);
     } finally {
       setIsSaving(false);
@@ -171,7 +171,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       });
       setIsEditingMetadata(false);
     } catch (err) {
-      alert('Failed to save category and cuisine. Please try again.');
+      setToast('Failed to save category and cuisine. Please try again.');
       console.error('Error saving metadata:', err);
     } finally {
       setIsSaving(false);
@@ -199,7 +199,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       // Update local state
       setRecipe({ ...recipe, is_favorite: newFavoriteState });
     } catch (err) {
-      alert('Failed to update favorite status. Please try again.');
+      setToast('Failed to update favorite status. Please try again.');
       console.error('Error updating favorite:', err);
     }
   };
@@ -223,7 +223,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
               <span className="pointer-events-none">{recipe.is_favorite ? 'Starred' : 'Star'}</span>
             </button>
             <button
-              onClick={handleDelete}
+              onClick={() => setShowDeleteConfirm(true)}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -487,6 +487,20 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
       </main>
+
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          title="Delete Recipe?"
+          message={`Are you sure you want to delete "${recipe.name}"? This action cannot be undone.`}
+          onConfirm={() => {
+            setShowDeleteConfirm(false);
+            handleDelete();
+          }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
+
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

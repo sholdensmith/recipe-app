@@ -13,14 +13,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Debug: Check if API key is loaded
-    console.log('CWD:', process.cwd());
-    console.log('All env keys:', Object.keys(process.env).filter(k => k.includes('ANTHROPIC')));
-    console.log('ANTHROPIC_API_KEY value:', JSON.stringify(process.env.ANTHROPIC_API_KEY));
-    console.log('ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY);
-    console.log('ANTHROPIC_API_KEY length:', process.env.ANTHROPIC_API_KEY?.length);
-    console.log('ANTHROPIC_API_KEY first 20 chars:', process.env.ANTHROPIC_API_KEY?.substring(0, 20));
-
     // Parse the recipe using Claude
     const parsed = await parseRecipeWithClaude(rawText);
 
