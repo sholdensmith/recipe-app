@@ -4,13 +4,61 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import PageHeader from '../_components/PageHeader';
+import Spinner from '../_components/Spinner';
+
+const CATEGORY_OPTIONS = [
+  'main',
+  'side',
+  'appetizer',
+  'dessert',
+  'breakfast',
+  'bread',
+  'soup',
+  'salad',
+  'condiment',
+  'drink',
+  'snack',
+];
+
+interface Draft {
+  name: string;
+  description: string;
+  prep_time: string;
+  cook_time: string;
+  total_time: string;
+  servings: string;
+  recipe_category: string;
+  recipe_cuisine: string;
+  ingredients: string;
+  instructions: string;
+  notes: string;
+}
+
+function toNumber(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function toLines(value: string): string[] {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
 
 export default function AddRecipe() {
   const router = useRouter();
   const [rawText, setRawText] = useState('');
   const [parsing, setParsing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [draft, setDraft] = useState<Draft | null>(null);
+
+  const updateDraft = (field: keyof Draft, value: string) => {
+    setDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
+  };
 
   const handleParse = async () => {
     if (!rawText.trim()) {
@@ -25,26 +73,90 @@ export default function AddRecipe() {
       const response = await fetch('/api/parse-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText, saveToDb: true }),
+        body: JSON.stringify({ rawText, saveToDb: false }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to parse recipe');
+        throw new Error(result.error || 'Failed to parse recipe');
       }
 
-      const result = await response.json();
-      setSuccess(true);
-
-      // Redirect to the new recipe after a short delay
-      setTimeout(() => {
-        router.push(`/recipes/${result.id}`);
-      }, 1500);
+      setDraft({
+        name: result.name ?? '',
+        description: result.description ?? '',
+        prep_time: result.prep_time != null ? String(result.prep_time) : '',
+        cook_time: result.cook_time != null ? String(result.cook_time) : '',
+        total_time: result.total_time != null ? String(result.total_time) : '',
+        servings: result.servings ?? '',
+        recipe_category: result.recipe_category ?? '',
+        recipe_cuisine: result.recipe_cuisine ?? '',
+        ingredients: (result.ingredients ?? []).join('\n'),
+        instructions: (result.instructions ?? []).join('\n'),
+        notes: result.notes ?? '',
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setParsing(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!draft) return;
+
+    if (!draft.name.trim()) {
+      setError('Recipe name is required');
+      return;
+    }
+    if (toLines(draft.ingredients).length === 0) {
+      setError('At least one ingredient is required');
+      return;
+    }
+    if (toLines(draft.instructions).length === 0) {
+      setError('At least one instruction step is required');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: draft.name.trim(),
+          description: draft.description.trim() || undefined,
+          prep_time: toNumber(draft.prep_time),
+          cook_time: toNumber(draft.cook_time),
+          total_time: toNumber(draft.total_time),
+          servings: draft.servings.trim() || undefined,
+          recipe_category: draft.recipe_category || undefined,
+          recipe_cuisine: draft.recipe_cuisine.trim() || undefined,
+          ingredients: toLines(draft.ingredients),
+          instructions: toLines(draft.instructions),
+          notes: draft.notes.trim() || undefined,
+          raw_text: rawText,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save recipe');
+      }
+
+      router.push(`/recipes/${result.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setSaving(false);
+    }
+  };
+
+  const handleStartOver = () => {
+    setDraft(null);
+    setError('');
   };
 
   return (
@@ -57,25 +169,28 @@ export default function AddRecipe() {
 
       <main className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-sm p-8">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Paste Your Recipe
-            </h2>
-            <p className="text-gray-600 text-sm">
-              Paste your recipe in any format. AI will automatically extract the title, ingredients,
-              instructions, cooking times, and categorize it for you.
-            </p>
-          </div>
+          {!draft ? (
+            <>
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Paste Your Recipe
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  Paste your recipe in any format. AI will extract the title, ingredients,
+                  instructions, cooking times, and categorize it. You&apos;ll get to review and
+                  edit everything before it&apos;s saved.
+                </p>
+              </div>
 
-          <div className="mb-6">
-            <label htmlFor="recipe-text" className="block text-sm font-medium text-gray-700 mb-2">
-              Recipe Text
-            </label>
-            <textarea
-              id="recipe-text"
-              value={rawText}
-              onChange={(e) => setRawText(e.target.value)}
-              placeholder="Example:
+              <div className="mb-6">
+                <label htmlFor="recipe-text" className="block text-sm font-medium text-gray-700 mb-2">
+                  Recipe Text
+                </label>
+                <textarea
+                  id="recipe-text"
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                  placeholder="Example:
 
 Chocolate Chip Cookies
 
@@ -102,51 +217,247 @@ Instructions:
 Prep time: 15 minutes
 Cook time: 10 minutes
 Makes 48 cookies"
-              rows={20}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-            />
-          </div>
+                  rows={20}
+                  disabled={parsing}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm disabled:bg-gray-50 text-gray-900 placeholder:text-gray-400"
+                />
+              </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800 text-sm">{error}</p>
-            </div>
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800 text-sm">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-4">
+                <button
+                  onClick={handleParse}
+                  disabled={parsing}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {parsing ? (
+                    <>
+                      <Spinner />
+                      Parsing with AI...
+                    </>
+                  ) : (
+                    'Parse Recipe'
+                  )}
+                </button>
+                <Link
+                  href="/"
+                  className="px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </Link>
+              </div>
+
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2">Tips for best results:</h3>
+                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Include the recipe name/title</li>
+                  <li>Separate ingredients and instructions clearly</li>
+                  <li>Include timing information if available (prep time, cook time)</li>
+                  <li>Mention the cuisine type or meal category if known</li>
+                  <li>Include serving size or yield information</li>
+                </ul>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Review &amp; Edit
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  Check what the AI extracted and fix anything before saving. Ingredients and
+                  instructions are one per line.
+                </p>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    id="name"
+                    type="text"
+                    value={draft.name}
+                    onChange={(e) => updateDraft('name', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    value={draft.description}
+                    onChange={(e) => updateDraft('description', e.target.value)}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label htmlFor="prep_time" className="block text-sm font-medium text-gray-700 mb-1">
+                      Prep (min)
+                    </label>
+                    <input
+                      id="prep_time"
+                      type="number"
+                      value={draft.prep_time}
+                      onChange={(e) => updateDraft('prep_time', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="cook_time" className="block text-sm font-medium text-gray-700 mb-1">
+                      Cook (min)
+                    </label>
+                    <input
+                      id="cook_time"
+                      type="number"
+                      value={draft.cook_time}
+                      onChange={(e) => updateDraft('cook_time', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="total_time" className="block text-sm font-medium text-gray-700 mb-1">
+                      Total (min)
+                    </label>
+                    <input
+                      id="total_time"
+                      type="number"
+                      value={draft.total_time}
+                      onChange={(e) => updateDraft('total_time', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="servings" className="block text-sm font-medium text-gray-700 mb-1">
+                      Servings
+                    </label>
+                    <input
+                      id="servings"
+                      type="text"
+                      value={draft.servings}
+                      onChange={(e) => updateDraft('servings', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="recipe_category" className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
+                    <select
+                      id="recipe_category"
+                      value={draft.recipe_category}
+                      onChange={(e) => updateDraft('recipe_category', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    >
+                      <option value="">Uncategorized</option>
+                      {CATEGORY_OPTIONS.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="recipe_cuisine" className="block text-sm font-medium text-gray-700 mb-1">
+                      Cuisine
+                    </label>
+                    <input
+                      id="recipe_cuisine"
+                      type="text"
+                      value={draft.recipe_cuisine}
+                      onChange={(e) => updateDraft('recipe_cuisine', e.target.value)}
+                      placeholder="e.g., Italian, Japanese"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="ingredients" className="block text-sm font-medium text-gray-700 mb-1">
+                    Ingredients <span className="text-gray-400 font-normal">(one per line)</span>
+                  </label>
+                  <textarea
+                    id="ingredients"
+                    value={draft.ingredients}
+                    onChange={(e) => updateDraft('ingredients', e.target.value)}
+                    rows={8}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 font-mono text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="instructions" className="block text-sm font-medium text-gray-700 mb-1">
+                    Instructions <span className="text-gray-400 font-normal">(one step per line)</span>
+                  </label>
+                  <textarea
+                    id="instructions"
+                    value={draft.instructions}
+                    onChange={(e) => updateDraft('instructions', e.target.value)}
+                    rows={8}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 font-mono text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    value={draft.notes}
+                    onChange={(e) => updateDraft('notes', e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800 text-sm">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-4 mt-6">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <Spinner />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Recipe'
+                  )}
+                </button>
+                <button
+                  onClick={handleStartOver}
+                  disabled={saving}
+                  className="px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Start Over
+                </button>
+              </div>
+            </>
           )}
-
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 text-sm">
-                Recipe successfully parsed and saved! Redirecting...
-              </p>
-            </div>
-          )}
-
-          <div className="flex gap-4">
-            <button
-              onClick={handleParse}
-              disabled={parsing || success}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-            >
-              {parsing ? 'Parsing with AI...' : success ? 'Saved!' : 'Parse & Save Recipe'}
-            </button>
-            <Link
-              href="/"
-              className="px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </Link>
-          </div>
-
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">Tips for best results:</h3>
-            <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-              <li>Include the recipe name/title</li>
-              <li>Separate ingredients and instructions clearly</li>
-              <li>Include timing information if available (prep time, cook time)</li>
-              <li>Mention the cuisine type or meal category if known</li>
-              <li>Include serving size or yield information</li>
-            </ul>
-          </div>
         </div>
       </main>
     </div>
