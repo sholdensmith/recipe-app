@@ -1,13 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { Recipe } from '../db';
-
-function getClient() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY environment variable is not set');
-  }
-  return new Anthropic({ apiKey });
-}
+import { CLAUDE_MODEL, getClient } from './client';
 
 export interface MealContext {
   currentItems: Array<{
@@ -49,7 +41,7 @@ export async function suggestComplementaryDishes(
   const client = getClient();
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: CLAUDE_MODEL,
     max_tokens: 1500,
     messages: [
       {
