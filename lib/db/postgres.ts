@@ -6,9 +6,29 @@ function toPositional(values: any[]): string {
   return values.map((_, i) => `$${i + 1}`).join(', ');
 }
 
+// Self-healing schema: ensure additive columns exist on the deployed database
+// so the app works after a deploy without a separate manual migration step.
+// Mirrors the column check in the SQLite layer's getDb(). Memoized so the
+// ALTER runs at most once per serverless instance.
+let schemaReady: Promise<void> | null = null;
+
+async function ensureSchema(): Promise<void> {
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      await sql`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_fan_favorite BOOLEAN DEFAULT FALSE`;
+    })().catch((err) => {
+      // Reset so a later call can retry if this failed transiently
+      schemaReady = null;
+      throw err;
+    });
+  }
+  return schemaReady;
+}
+
 // ===== RECIPE OPERATIONS =====
 
 export async function insertRecipe(recipe: Recipe): Promise<number> {
+  await ensureSchema();
   const result = await sql`
     INSERT INTO recipes (
       name, description, author, prep_time, cook_time, total_time,
@@ -28,11 +48,13 @@ export async function insertRecipe(recipe: Recipe): Promise<number> {
 }
 
 export async function getAllRecipes(): Promise<Recipe[]> {
+  await ensureSchema();
   const result = await sql`SELECT * FROM recipes ORDER BY created_at DESC`;
   return result.rows as Recipe[];
 }
 
 export async function getRecipeById(id: number): Promise<Recipe | null> {
+  await ensureSchema();
   const result = await sql`SELECT * FROM recipes WHERE id = ${id}`;
   if (result.rows.length === 0) return null;
   return result.rows[0] as Recipe;
@@ -45,6 +67,7 @@ export async function filterRecipes(filters: {
   search?: string;
   favorites?: boolean;
 }): Promise<Recipe[]> {
+  await ensureSchema();
   let query = 'SELECT * FROM recipes WHERE 1=1';
   const params: any[] = [];
   let paramIndex = 1;
@@ -105,6 +128,7 @@ export async function getCuisines(): Promise<string[]> {
 }
 
 export async function updateRecipe(id: number, recipe: Partial<Recipe>): Promise<boolean> {
+  await ensureSchema();
   const updates: string[] = [];
   const params: any[] = [];
   let paramIndex = 1;
