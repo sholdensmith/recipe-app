@@ -17,7 +17,8 @@ export interface Recipe {
   image_url?: string;
   source_url?: string;
   raw_text?: string;
-  is_favorite?: boolean | number; // boolean for Postgres, 0/1 for SQLite
+  is_favorite?: boolean | number; // bookmarked — boolean for Postgres, 0/1 for SQLite
+  is_fan_favorite?: boolean | number; // boolean for Postgres, 0/1 for SQLite
   created_at?: string;
   updated_at?: string;
 }

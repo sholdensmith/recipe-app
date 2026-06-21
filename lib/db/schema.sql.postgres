@@ -19,10 +19,14 @@ CREATE TABLE IF NOT EXISTS recipes (
   image_url TEXT,
   source_url TEXT,
   raw_text TEXT,
-  is_favorite BOOLEAN DEFAULT FALSE,
+  is_favorite BOOLEAN DEFAULT FALSE, -- bookmarked (stored under legacy name)
+  is_fan_favorite BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add fan favorite column to pre-existing deployments
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_fan_favorite BOOLEAN DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_recipes_category ON recipes(recipe_category);
 CREATE INDEX IF NOT EXISTS idx_recipes_cuisine ON recipes(recipe_cuisine);

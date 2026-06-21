@@ -29,7 +29,8 @@ function recipeToMarkdown(recipe: Recipe): string {
   if (recipe.total_time) meta.push(`- **Total time:** ${recipe.total_time} min`);
   if (recipe.servings) meta.push(`- **Servings:** ${recipe.servings}`);
   if (recipe.recipe_yield) meta.push(`- **Yield:** ${recipe.recipe_yield}`);
-  if (recipe.is_favorite) meta.push(`- **Favorite:** ★`);
+  if (recipe.is_favorite) meta.push(`- **Bookmarked:** 🔖`);
+  if (recipe.is_fan_favorite) meta.push(`- **Fan Favorite:** ⭐`);
   if (recipe.source_url) meta.push(`- **Source:** ${recipe.source_url}`);
   if (meta.length) {
     lines.push(...meta);

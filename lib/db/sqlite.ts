@@ -21,7 +21,8 @@ export interface Recipe {
   image_url?: string;
   source_url?: string;
   raw_text?: string;
-  is_favorite?: boolean | number; // boolean for Postgres, 0/1 for SQLite
+  is_favorite?: boolean | number; // bookmarked — boolean for Postgres, 0/1 for SQLite
+  is_fan_favorite?: boolean | number; // boolean for Postgres, 0/1 for SQLite
   created_at?: string;
   updated_at?: string;
 }
@@ -36,6 +37,13 @@ export function getDb(): Database.Database {
     // Initialize schema
     const schema = readFileSync(join(process.cwd(), 'lib', 'db', 'schema.sql'), 'utf-8');
     db.exec(schema);
+
+    // Add is_fan_favorite to pre-existing databases (CREATE TABLE IF NOT EXISTS
+    // won't add new columns to an already-created table).
+    const columns = db.prepare('PRAGMA table_info(recipes)').all() as { name: string }[];
+    if (!columns.some(col => col.name === 'is_fan_favorite')) {
+      db.exec('ALTER TABLE recipes ADD COLUMN is_fan_favorite INTEGER DEFAULT 0');
+    }
   }
   return db;
 }
@@ -264,6 +272,10 @@ export function updateRecipe(id: number, recipe: Partial<Recipe>): boolean {
   if (recipe.is_favorite !== undefined) {
     updates.push('is_favorite = @is_favorite');
     params.is_favorite = recipe.is_favorite;
+  }
+  if (recipe.is_fan_favorite !== undefined) {
+    updates.push('is_fan_favorite = @is_fan_favorite');
+    params.is_fan_favorite = recipe.is_fan_favorite;
   }
 
   if (updates.length === 0) return false;

@@ -19,7 +19,7 @@ function HomeContent() {
   const [selectedCuisine, setSelectedCuisine] = useState<string>(searchParams.get('cuisine') ?? '');
   const [searchInput, setSearchInput] = useState<string>(searchParams.get('search') ?? '');
   const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') ?? '');
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(searchParams.get('favorites') === 'true');
+  const [showBookmarkedOnly, setShowBookmarkedOnly] = useState<boolean>(searchParams.get('favorites') === 'true');
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -36,17 +36,17 @@ function HomeContent() {
 
   useEffect(() => {
     fetchRecipes();
-  }, [selectedCategory, selectedCuisine, searchQuery, showFavoritesOnly]);
+  }, [selectedCategory, selectedCuisine, searchQuery, showBookmarkedOnly]);
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (selectedCategory) params.set('category', selectedCategory);
     if (selectedCuisine) params.set('cuisine', selectedCuisine);
     if (searchQuery) params.set('search', searchQuery);
-    if (showFavoritesOnly) params.set('favorites', 'true');
+    if (showBookmarkedOnly) params.set('favorites', 'true');
     const qs = params.toString();
     router.replace(qs ? `/?${qs}` : '/', { scroll: false });
-  }, [selectedCategory, selectedCuisine, searchQuery, showFavoritesOnly, router]);
+  }, [selectedCategory, selectedCuisine, searchQuery, showBookmarkedOnly, router]);
 
   const fetchRecipes = async () => {
     setLoading(true);
@@ -55,7 +55,7 @@ function HomeContent() {
       if (selectedCategory) params.set('category', selectedCategory);
       if (selectedCuisine) params.set('cuisine', selectedCuisine);
       if (searchQuery) params.set('search', searchQuery);
-      if (showFavoritesOnly) params.set('favorites', 'true');
+      if (showBookmarkedOnly) params.set('favorites', 'true');
 
       const response = await fetch(`/api/recipes?${params}`);
       const data = await response.json();
@@ -95,37 +95,37 @@ function HomeContent() {
     }
   };
 
-  const handleToggleFavorite = async (e: React.MouseEvent, recipeId: number) => {
+  const handleToggleBookmark = async (e: React.MouseEvent, recipeId: number) => {
     e.preventDefault(); // Prevent navigation to recipe detail page
     e.stopPropagation();
 
     const recipe = recipes.find(r => r.id === recipeId);
     if (!recipe) return;
 
-    const newFavoriteState = !recipe.is_favorite;
+    const newBookmarkState = !recipe.is_favorite;
 
     // Optimistically update UI
     setRecipes(recipes.map(r =>
-      r.id === recipeId ? { ...r, is_favorite: newFavoriteState } : r
+      r.id === recipeId ? { ...r, is_favorite: newBookmarkState } : r
     ));
 
     try {
       const response = await fetch(`/api/recipes/${recipeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_favorite: newFavoriteState ? 1 : 0 }),
+        body: JSON.stringify({ is_favorite: newBookmarkState ? 1 : 0 }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update favorite status');
+        throw new Error('Failed to update bookmark status');
       }
     } catch (err) {
       // Revert on error
       setRecipes(recipes.map(r =>
-        r.id === recipeId ? { ...r, is_favorite: !newFavoriteState } : r
+        r.id === recipeId ? { ...r, is_favorite: !newBookmarkState } : r
       ));
-      setToast('Failed to update favorite status. Please try again.');
-      console.error('Error updating favorite:', err);
+      setToast('Failed to update bookmark. Please try again.');
+      console.error('Error updating bookmark:', err);
     }
   };
 
@@ -154,20 +154,20 @@ function HomeContent() {
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={showFavoritesOnly}
-                onChange={(e) => setShowFavoritesOnly(e.target.checked)}
-                className="w-4 h-4 text-yellow-500 border-gray-300 rounded focus:ring-yellow-500"
+                checked={showBookmarkedOnly}
+                onChange={(e) => setShowBookmarkedOnly(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <span className="text-sm font-medium text-gray-700 flex items-center gap-1">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 text-yellow-500"
+                  className="h-4 w-4 text-blue-600"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  <path d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
                 </svg>
-                Favorites only
+                Bookmarked only
               </span>
             </label>
           </div>
@@ -232,14 +232,14 @@ function HomeContent() {
             </div>
           </div>
 
-          {(selectedCategory || selectedCuisine || searchInput || showFavoritesOnly) && (
+          {(selectedCategory || selectedCuisine || searchInput || showBookmarkedOnly) && (
             <button
               onClick={() => {
                 setSelectedCategory('');
                 setSelectedCuisine('');
                 setSearchInput('');
                 setSearchQuery('');
-                setShowFavoritesOnly(false);
+                setShowBookmarkedOnly(false);
               }}
               className="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
@@ -284,27 +284,34 @@ function HomeContent() {
                 href={`/recipes/${recipe.id}`}
                 className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden relative"
               >
-                {/* Star button overlay */}
+                {/* Bookmark button overlay */}
                 <button
-                  onClick={(e) => handleToggleFavorite(e, recipe.id!)}
+                  onClick={(e) => handleToggleBookmark(e, recipe.id!)}
                   className="absolute top-4 right-4 z-10 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                  title={recipe.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                  title={recipe.is_favorite ? 'Remove bookmark' : 'Bookmark this recipe'}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-6 w-6"
-                    fill={recipe.is_favorite ? '#EAB308' : 'none'}
+                    fill={recipe.is_favorite ? '#2563EB' : 'none'}
                     viewBox="0 0 24 24"
-                    stroke={recipe.is_favorite ? '#EAB308' : '#9CA3AF'}
+                    stroke={recipe.is_favorite ? '#2563EB' : '#9CA3AF'}
                     strokeWidth={2}
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                      d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
                     />
                   </svg>
                 </button>
+
+                {/* Fan Favorite stamp */}
+                {recipe.is_fan_favorite ? (
+                  <span className="absolute top-3 left-3 z-10 -rotate-12 select-none rounded-md border-2 border-red-500/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-600/90 bg-red-50/70">
+                    Fan Favorite
+                  </span>
+                ) : null}
 
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2 pr-8">{recipe.name}</h3>

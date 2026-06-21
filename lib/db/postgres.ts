@@ -173,6 +173,10 @@ export async function updateRecipe(id: number, recipe: Partial<Recipe>): Promise
     updates.push(`is_favorite = $${paramIndex++}`);
     params.push(recipe.is_favorite);
   }
+  if (recipe.is_fan_favorite !== undefined) {
+    updates.push(`is_fan_favorite = $${paramIndex++}`);
+    params.push(recipe.is_fan_favorite);
+  }
 
   if (updates.length === 0) return false;
 
