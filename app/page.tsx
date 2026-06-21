@@ -308,7 +308,7 @@ function HomeContent() {
 
                 {/* Fan Favorite stamp */}
                 {recipe.is_fan_favorite ? (
-                  <span className="absolute top-3 left-3 z-10 -rotate-12 select-none rounded-md border-2 border-red-500/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-600/90 bg-red-50/70">
+                  <span className="absolute bottom-3 right-3 z-10 -rotate-12 select-none rounded-md border-2 border-red-500/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-600/90 bg-red-50/70">
                     Fan Favorite
                   </span>
                 ) : null}
