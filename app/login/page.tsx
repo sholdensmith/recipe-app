@@ -1,11 +1,10 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Spinner from '../_components/Spinner';
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -31,9 +30,9 @@ function LoginContent() {
       }
 
       const from = searchParams.get('from');
-      // Only allow same-site relative redirects
-      router.push(from && from.startsWith('/') && !from.startsWith('//') ? from : '/');
-      router.refresh();
+      // Full page load (not client-side routing) so the fresh auth cookie is
+      // guaranteed to be picked up; only allow same-site relative redirects
+      window.location.assign(from && from.startsWith('/') && !from.startsWith('//') ? from : '/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setSubmitting(false);
