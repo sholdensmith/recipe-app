@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Recipe } from '@/lib/db';
+import type { MisePlan } from '@/lib/ai/mise-en-place';
 import { scaleIngredient } from '@/lib/scale-ingredient';
 import PageHeader from '../../_components/PageHeader';
 import Toast from '../../_components/Toast';
@@ -44,7 +45,47 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [cookMode, setCookMode] = useState(false);
   // Step 0 is mise en place (ingredient prep); steps 1..n are instructions
   const [cookStep, setCookStep] = useState(0);
-  const [miseChecked, setMiseChecked] = useState<Set<number>>(new Set());
+  const [miseChecked, setMiseChecked] = useState<Set<string>>(new Set());
+  // AI-organized prep plan (bowl groupings + setup tasks); null = plain list
+  const [misePlan, setMisePlan] = useState<MisePlan | null>(null);
+  const [misePlanScale, setMisePlanScale] = useState<number | null>(null);
+  const [miseLoading, setMiseLoading] = useState(false);
+
+  const toggleMise = (key: string) => {
+    setMiseChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const startCookMode = () => {
+    setCookStep(0);
+    setMiseChecked(new Set());
+    setCookMode(true);
+
+    // Reuse the plan if we already fetched it for this scale
+    if (misePlan && misePlanScale === scale) return;
+
+    setMiseLoading(true);
+    setMisePlan(null);
+    fetch(`/api/recipes/${id}/mise-en-place?scale=${scale}`)
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json();
+        setMisePlan(data);
+        setMisePlanScale(scale);
+        setMiseChecked(new Set());
+      })
+      .catch(() => {
+        // AI organization is best-effort; the plain checklist still shows
+      })
+      .finally(() => setMiseLoading(false));
+  };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const wakeLockRef = useRef<any>(null);
 
@@ -320,7 +361,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
 
             {/* Primary action */}
             <button
-              onClick={() => { setCookStep(0); setMiseChecked(new Set()); setCookMode(true); }}
+              onClick={startCookMode}
               className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
               title="Step-by-step cooking mode"
             >
@@ -681,33 +722,94 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
                   Measure and prep everything before you start
                   {scale !== 1 ? ` — quantities scaled to ${scale}×` : ''}.
                 </p>
-                <ul className="space-y-1">
-                  {recipe.ingredients.map((ingredient, i) => (
-                    <li key={i}>
-                      <label className="flex items-start gap-3 cursor-pointer py-2 text-lg md:text-xl text-gray-800">
-                        <input
-                          type="checkbox"
-                          checked={miseChecked.has(i)}
-                          onChange={() =>
-                            setMiseChecked((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(i)) {
-                                next.delete(i);
-                              } else {
-                                next.add(i);
-                              }
-                              return next;
-                            })
-                          }
-                          className="mt-1.5 w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 shrink-0"
-                        />
-                        <span className={miseChecked.has(i) ? 'text-gray-400 line-through' : ''}>
-                          {scale === 1 ? ingredient : scaleIngredient(ingredient, scale)}
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
+
+                {miseLoading && (
+                  <p className="flex items-center justify-center gap-2 text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mb-5">
+                    <span className="inline-block h-3.5 w-3.5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    Organizing your prep — figuring out what can share a bowl...
+                  </p>
+                )}
+
+                {misePlan && misePlanScale === scale ? (
+                  <div className="space-y-6">
+                    {misePlan.setup.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-orange-600 uppercase tracking-wide mb-1.5">
+                          Get ready
+                        </h3>
+                        <ul className="space-y-1">
+                          {misePlan.setup.map((task, i) => {
+                            const key = `s:${i}`;
+                            return (
+                              <li key={key}>
+                                <label className="flex items-start gap-3 cursor-pointer py-1.5 text-lg md:text-xl text-gray-800">
+                                  <input
+                                    type="checkbox"
+                                    checked={miseChecked.has(key)}
+                                    onChange={() => toggleMise(key)}
+                                    className="mt-1.5 w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 shrink-0"
+                                  />
+                                  <span className={miseChecked.has(key) ? 'text-gray-400 line-through' : ''}>
+                                    {task}
+                                  </span>
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+
+                    {misePlan.groups.map((group, g) => (
+                      <div key={g}>
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                          {group.title}
+                        </h3>
+                        <ul className="space-y-1">
+                          {group.items.map((item, i) => {
+                            const key = `${g}:${i}`;
+                            return (
+                              <li key={key}>
+                                <label className="flex items-start gap-3 cursor-pointer py-1.5 text-lg md:text-xl text-gray-800">
+                                  <input
+                                    type="checkbox"
+                                    checked={miseChecked.has(key)}
+                                    onChange={() => toggleMise(key)}
+                                    className="mt-1.5 w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 shrink-0"
+                                  />
+                                  <span className={miseChecked.has(key) ? 'text-gray-400 line-through' : ''}>
+                                    {item}
+                                  </span>
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <ul className="space-y-1">
+                    {recipe.ingredients.map((ingredient, i) => {
+                      const key = `i:${i}`;
+                      return (
+                        <li key={key}>
+                          <label className="flex items-start gap-3 cursor-pointer py-2 text-lg md:text-xl text-gray-800">
+                            <input
+                              type="checkbox"
+                              checked={miseChecked.has(key)}
+                              onChange={() => toggleMise(key)}
+                              className="mt-1.5 w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 shrink-0"
+                            />
+                            <span className={miseChecked.has(key) ? 'text-gray-400 line-through' : ''}>
+                              {scale === 1 ? ingredient : scaleIngredient(ingredient, scale)}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
             </div>
           ) : (

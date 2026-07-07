@@ -6,6 +6,7 @@ import {
   parsedRecipeSchema,
 } from '../lib/validation';
 import { extractJson } from '../lib/ai/parse-recipe';
+import { misePlanSchema } from '../lib/ai/mise-en-place';
 
 describe('recipeCreateSchema', () => {
   const valid = {
@@ -71,6 +72,28 @@ describe('parsedRecipeSchema', () => {
     });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.servings).toBe('16');
+  });
+});
+
+describe('misePlanSchema', () => {
+  it('accepts a valid plan', () => {
+    const plan = {
+      setup: ['Preheat oven to 350°F'],
+      groups: [
+        { title: 'Dry ingredients — one bowl (step 5)', items: ['Measure 1/2 cup flour'] },
+      ],
+    };
+    expect(misePlanSchema.safeParse(plan).success).toBe(true);
+  });
+
+  it('rejects a plan with no groups', () => {
+    expect(misePlanSchema.safeParse({ setup: [], groups: [] }).success).toBe(false);
+  });
+
+  it('rejects groups with empty items', () => {
+    expect(
+      misePlanSchema.safeParse({ setup: [], groups: [{ title: 'Bowl', items: [] }] }).success
+    ).toBe(false);
   });
 });
 
