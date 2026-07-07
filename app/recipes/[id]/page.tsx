@@ -42,7 +42,9 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [scale, setScale] = useState(1);
   const [cookMode, setCookMode] = useState(false);
+  // Step 0 is mise en place (ingredient prep); steps 1..n are instructions
   const [cookStep, setCookStep] = useState(0);
+  const [miseChecked, setMiseChecked] = useState<Set<number>>(new Set());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const wakeLockRef = useRef<any>(null);
 
@@ -318,7 +320,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
 
             {/* Primary action */}
             <button
-              onClick={() => { setCookStep(0); setCookMode(true); }}
+              onClick={() => { setCookStep(0); setMiseChecked(new Set()); setCookMode(true); }}
               className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
               title="Step-by-step cooking mode"
             >
@@ -645,14 +647,17 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
         </div>
       </main>
 
-      {/* Cook mode: full-screen step-by-step view with the screen kept awake */}
+      {/* Cook mode: full-screen step-by-step view with the screen kept awake.
+          Step 0 is mise en place; steps 1..n are the instructions. */}
       {cookMode && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
             <div>
               <p className="font-semibold text-gray-900">{recipe.name}</p>
               <p className="text-sm text-gray-500">
-                Step {cookStep + 1} of {recipe.instructions.length}
+                {cookStep === 0
+                  ? 'Mise en place'
+                  : `Step ${cookStep} of ${recipe.instructions.length}`}
               </p>
             </div>
             <button
@@ -666,15 +671,56 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-8">
-            <p className="text-2xl md:text-4xl leading-relaxed text-gray-900 max-w-3xl text-center">
-              {recipe.instructions[cookStep]}
-            </p>
-          </div>
+          {cookStep === 0 ? (
+            <div className="flex-1 overflow-y-auto px-6 py-8">
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 text-center mb-2">
+                  Mise en place
+                </h2>
+                <p className="text-gray-500 text-center mb-6">
+                  Measure and prep everything before you start
+                  {scale !== 1 ? ` — quantities scaled to ${scale}×` : ''}.
+                </p>
+                <ul className="space-y-1">
+                  {recipe.ingredients.map((ingredient, i) => (
+                    <li key={i}>
+                      <label className="flex items-start gap-3 cursor-pointer py-2 text-lg md:text-xl text-gray-800">
+                        <input
+                          type="checkbox"
+                          checked={miseChecked.has(i)}
+                          onChange={() =>
+                            setMiseChecked((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(i)) {
+                                next.delete(i);
+                              } else {
+                                next.add(i);
+                              }
+                              return next;
+                            })
+                          }
+                          className="mt-1.5 w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 shrink-0"
+                        />
+                        <span className={miseChecked.has(i) ? 'text-gray-400 line-through' : ''}>
+                          {scale === 1 ? ingredient : scaleIngredient(ingredient, scale)}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-8">
+              <p className="text-2xl md:text-4xl leading-relaxed text-gray-900 max-w-3xl text-center">
+                {recipe.instructions[cookStep - 1]}
+              </p>
+            </div>
+          )}
 
           <div className="px-4 pb-3">
             <div className="flex gap-1 mb-3" aria-hidden="true">
-              {recipe.instructions.map((_, i) => (
+              {Array.from({ length: recipe.instructions.length + 1 }).map((_, i) => (
                 <div
                   key={i}
                   className={`h-1 flex-1 rounded-full ${i <= cookStep ? 'bg-orange-500' : 'bg-gray-200'}`}
@@ -689,12 +735,12 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
               >
                 ← Back
               </button>
-              {cookStep < recipe.instructions.length - 1 ? (
+              {cookStep < recipe.instructions.length ? (
                 <button
-                  onClick={() => setCookStep((s) => Math.min(recipe.instructions.length - 1, s + 1))}
+                  onClick={() => setCookStep((s) => Math.min(recipe.instructions.length, s + 1))}
                   className="flex-1 py-4 rounded-lg font-medium text-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors"
                 >
-                  Next →
+                  {cookStep === 0 ? 'Start cooking →' : 'Next →'}
                 </button>
               ) : (
                 <button
