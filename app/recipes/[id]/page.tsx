@@ -8,6 +8,7 @@ import { scaleIngredient } from '@/lib/scale-ingredient';
 import PageHeader from '../../_components/PageHeader';
 import Toast from '../../_components/Toast';
 import ConfirmDialog from '../../_components/ConfirmDialog';
+import ActionMenu from '../../_components/ActionMenu';
 
 const SCALE_OPTIONS = [
   { label: '½×', value: 0.5 },
@@ -288,54 +289,31 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
         maxWidth="4xl"
         actions={
           <>
+            {/* Compact icon toggles */}
             <button
               onClick={handleToggleBookmark}
-              className={`${recipe.is_favorite ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]`}
+              className={`${recipe.is_favorite ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'} rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors touch-manipulation`}
               title={recipe.is_favorite ? 'Remove bookmark' : 'Bookmark this recipe'}
+              aria-label={recipe.is_favorite ? 'Remove bookmark' : 'Bookmark this recipe'}
+              aria-pressed={!!recipe.is_favorite}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill={recipe.is_favorite ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
               </svg>
-              <span className="pointer-events-none">{recipe.is_favorite ? 'Bookmarked' : 'Bookmark'}</span>
             </button>
             <button
               onClick={handleToggleFanFavorite}
-              className={`${recipe.is_fan_favorite ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]`}
+              className={`${recipe.is_fan_favorite ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'} rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors touch-manipulation`}
               title={recipe.is_fan_favorite ? 'Remove fan favorite' : 'Mark as fan favorite'}
+              aria-label={recipe.is_fan_favorite ? 'Remove fan favorite' : 'Mark as fan favorite'}
+              aria-pressed={!!recipe.is_fan_favorite}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill={recipe.is_fan_favorite ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
               </svg>
-              <span className="pointer-events-none">{recipe.is_fan_favorite ? 'Fan Favorite' : 'Mark Fan Favorite'}</span>
             </button>
-            <button
-              onClick={() => router.push(`/recipes/${id}/edit`)}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
-              title="Edit this recipe"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-              <span className="pointer-events-none">Edit</span>
-            </button>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              <span className="pointer-events-none">Delete</span>
-            </button>
-            <button
-              onClick={handlePrint}
-              className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              <span className="pointer-events-none">Print</span>
-            </button>
+
+            {/* Primary action */}
             <button
               onClick={() => { setCookStep(0); setCookMode(true); }}
               className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
@@ -346,16 +324,49 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
               </svg>
               <span className="pointer-events-none">Cook</span>
             </button>
-            <button
-              onClick={() => router.push(`/meals/new?seedRecipeId=${id}`)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
-              title="Build a menu around this recipe"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h16M19 9v6" />
-              </svg>
-              <span className="pointer-events-none">Build menu</span>
-            </button>
+
+            {/* Everything else lives in the overflow menu */}
+            <ActionMenu
+              items={[
+                {
+                  label: 'Edit recipe',
+                  onClick: () => router.push(`/recipes/${id}/edit`),
+                  icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  ),
+                },
+                {
+                  label: 'Build menu',
+                  onClick: () => router.push(`/meals/new?seedRecipeId=${id}`),
+                  icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h16M19 9v6" />
+                    </svg>
+                  ),
+                },
+                {
+                  label: 'Print',
+                  onClick: handlePrint,
+                  icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                  ),
+                },
+                {
+                  label: 'Delete recipe',
+                  onClick: () => setShowDeleteConfirm(true),
+                  danger: true,
+                  icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  ),
+                },
+              ]}
+            />
           </>
         }
       />
