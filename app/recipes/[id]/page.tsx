@@ -123,7 +123,10 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   }
 
   const handlePrint = () => {
-    window.print();
+    // Defer until the action menu has finished closing — WebKit (iOS
+    // Safari) silently drops window.print() when it's called while the
+    // DOM is mid-update. 200ms stays within the user-activation window.
+    setTimeout(() => window.print(), 200);
   };
 
   const handleDelete = async () => {
