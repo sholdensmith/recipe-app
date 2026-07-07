@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllRecipes, insertRecipe, filterRecipes, getCategories, getCuisines } from '@/lib/db';
+import { getAllRecipes, insertRecipe, filterRecipes, getCategories, getCuisines, type Recipe } from '@/lib/db';
 import { getCuisinesForFilter } from '@/lib/cuisine-hierarchy';
+import { recipeCreateSchema, firstIssue } from '@/lib/validation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,17 +43,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const recipe = await request.json();
+    const body = await request.json();
 
-    // Validate required fields
-    if (!recipe.name || !recipe.ingredients || !recipe.instructions) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, ingredients, or instructions' },
-        { status: 400 }
-      );
+    const result = recipeCreateSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: firstIssue(result.error) }, { status: 400 });
     }
 
-    const id = await insertRecipe(recipe);
+    // zod nullish fields ("null") are stored as NULL by the db layer
+    const id = await insertRecipe(result.data as Recipe);
     return NextResponse.json({ id, message: 'Recipe created successfully' });
   } catch (error) {
     console.error('Error creating recipe:', error);

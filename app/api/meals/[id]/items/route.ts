@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { insertMealItem, getMealItems, deleteMealItem } from '@/lib/db';
+import { insertMealItem, getMealItems, deleteMealItem, type MealItem } from '@/lib/db';
+import { mealItemCreateSchema, firstIssue } from '@/lib/validation';
 
 export async function GET(
   request: NextRequest,
@@ -42,32 +43,14 @@ export async function POST(
       );
     }
 
-    const item = await request.json();
-    item.meal_id = mealId;
+    const body = await request.json();
 
-    // Validate item
-    if (!item.item_type || !['recipe', 'simple'].includes(item.item_type)) {
-      return NextResponse.json(
-        { error: 'Invalid item_type. Must be "recipe" or "simple"' },
-        { status: 400 }
-      );
+    const result = mealItemCreateSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: firstIssue(result.error) }, { status: 400 });
     }
 
-    if (item.item_type === 'recipe' && !item.recipe_id) {
-      return NextResponse.json(
-        { error: 'recipe_id required for recipe items' },
-        { status: 400 }
-      );
-    }
-
-    if (item.item_type === 'simple' && !item.simple_item_name) {
-      return NextResponse.json(
-        { error: 'simple_item_name required for simple items' },
-        { status: 400 }
-      );
-    }
-
-    const itemId = await insertMealItem(item);
+    const itemId = await insertMealItem({ ...result.data, meal_id: mealId } as MealItem);
     return NextResponse.json({ id: itemId, message: 'Item added to meal' });
   } catch (error) {
     console.error('Error adding meal item:', error);

@@ -5,11 +5,16 @@ A modern web app for managing and organizing your family recipes with AI-powered
 ## Features
 
 - **AI Recipe Parsing**: Paste recipes in any format and let Claude AI automatically extract and structure them
+- **Import from a Link**: Paste a recipe URL — structured data (schema.org JSON-LD) imports instantly, with AI as a fallback for pages without it
 - **Smart Search**: Search recipes by ingredient, name, or content using full-text search
 - **Advanced Filtering**: Filter by cuisine type (Italian, Mexican, Thai, etc.) and meal category (dessert, main, appetizer, etc.)
+- **Recipe Editing**: Full editing of every field after a recipe is saved
+- **Recipe Scaling**: Scale ingredient quantities (½× to 3×) right on the recipe page
+- **Cook Mode**: Full-screen step-by-step instructions that keep your screen awake
+- **Meals & Grocery Lists**: Group recipes into meals and generate a consolidated, categorized grocery list
+- **Family Password**: Optional shared password (`SITE_PASSWORD`) protects the whole app when deployed
 - **Schema.org Compliant**: Uses standard Recipe schema format for structured data
-- **Family Sharing**: Easy to deploy and share with family members
-- **SQLite Database**: Lightweight, file-based database with no setup required
+- **SQLite Database**: Lightweight, file-based database with no setup required (Postgres supported for deployment)
 
 ## Getting Started
 
@@ -38,6 +43,11 @@ cp .env.example .env.local
 4. Edit `.env.local` and add your Anthropic API key:
 ```
 ANTHROPIC_API_KEY=your_api_key_here
+```
+
+Optionally set a shared password for the whole app (recommended when deployed):
+```
+SITE_PASSWORD=something-your-family-knows
 ```
 
 5. Run the development server:
@@ -82,7 +92,7 @@ Each recipe shows:
 
 ## Technology Stack
 
-- **Frontend**: Next.js 15 with React and TypeScript
+- **Frontend**: Next.js 16 with React and TypeScript
 - **Styling**: Tailwind CSS
 - **Database**: SQLite with better-sqlite3
 - **AI**: Claude API (Anthropic) for recipe parsing
@@ -154,6 +164,12 @@ npm start
 
 # Run linter
 npm run lint
+
+# Typecheck
+npm run typecheck
+
+# Run tests
+npm test
 ```
 
 ## Contributing

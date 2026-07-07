@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Recipe } from '@/lib/db';
-import { CUISINE_HIERARCHY, getParentCuisines } from '@/lib/cuisine-hierarchy';
+import { getParentCuisines } from '@/lib/cuisine-hierarchy';
 import PageHeader from './_components/PageHeader';
 import Toast from './_components/Toast';
 
@@ -104,8 +104,9 @@ function HomeContent() {
 
     const newBookmarkState = !recipe.is_favorite;
 
-    // Optimistically update UI
-    setRecipes(recipes.map(r =>
+    // Optimistically update UI (functional update avoids clobbering
+    // concurrent state changes from a stale closure)
+    setRecipes(prev => prev.map(r =>
       r.id === recipeId ? { ...r, is_favorite: newBookmarkState } : r
     ));
 
@@ -121,7 +122,7 @@ function HomeContent() {
       }
     } catch (err) {
       // Revert on error
-      setRecipes(recipes.map(r =>
+      setRecipes(prev => prev.map(r =>
         r.id === recipeId ? { ...r, is_favorite: !newBookmarkState } : r
       ));
       setToast('Failed to update bookmark. Please try again.');
@@ -313,6 +314,15 @@ function HomeContent() {
                   </span>
                 ) : null}
 
+                {recipe.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={recipe.image_url}
+                    alt=""
+                    className="w-full h-40 object-cover"
+                    loading="lazy"
+                  />
+                )}
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2 pr-8">{recipe.name}</h3>
                   {recipe.description && (

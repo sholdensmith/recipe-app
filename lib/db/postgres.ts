@@ -1,10 +1,7 @@
 import { sql } from '@vercel/postgres';
 import type { Recipe, Meal, MealItem, MealItemWithRecipe, MealWithItems } from './types';
 
-// Helper to convert array params to positional ($1, $2, etc)
-function toPositional(values: any[]): string {
-  return values.map((_, i) => `$${i + 1}`).join(', ');
-}
+type SqlParam = string | number | boolean | null;
 
 // Self-healing schema: ensure additive columns exist on the deployed database
 // so the app works after a deploy without a separate manual migration step.
@@ -69,7 +66,7 @@ export async function filterRecipes(filters: {
 }): Promise<Recipe[]> {
   await ensureSchema();
   let query = 'SELECT * FROM recipes WHERE 1=1';
-  const params: any[] = [];
+  const params: SqlParam[] = [];
   let paramIndex = 1;
 
   if (filters.favorites) {
@@ -130,7 +127,7 @@ export async function getCuisines(): Promise<string[]> {
 export async function updateRecipe(id: number, recipe: Partial<Recipe>): Promise<boolean> {
   await ensureSchema();
   const updates: string[] = [];
-  const params: any[] = [];
+  const params: SqlParam[] = [];
   let paramIndex = 1;
 
   if (recipe.name !== undefined) {
@@ -241,7 +238,7 @@ export async function getMealById(id: number): Promise<Meal | null> {
 
 export async function updateMeal(id: number, meal: Partial<Meal>): Promise<boolean> {
   const updates: string[] = [];
-  const params: any[] = [];
+  const params: SqlParam[] = [];
   let paramIndex = 1;
 
   if (meal.name !== undefined) {
@@ -358,7 +355,7 @@ export async function deleteMealItem(id: number): Promise<boolean> {
 
 export async function updateMealItem(id: number, item: Partial<MealItem>): Promise<boolean> {
   const updates: string[] = [];
-  const params: any[] = [];
+  const params: SqlParam[] = [];
   let paramIndex = 1;
 
   if (item.simple_item_name !== undefined) {

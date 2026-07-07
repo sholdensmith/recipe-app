@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { suggestComplementaryDishes } from '@/lib/ai/suggest-dishes';
 import { getAllRecipes, filterRecipes } from '@/lib/db';
+import { checkRateLimit, AI_RATE_LIMIT } from '@/lib/rate-limit';
 
 const MAX_MATCHES_PER_SUGGESTION = 3;
 
 export async function POST(request: NextRequest) {
   try {
+    const limit = checkRateLimit(request, 'ai', AI_RATE_LIMIT);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many AI requests. Please wait a few minutes and try again.' },
+        { status: 429 }
+      );
+    }
+
     const { currentItems, servings } = await request.json();
 
     if (!currentItems || !Array.isArray(currentItems)) {

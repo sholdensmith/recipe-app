@@ -1,22 +1,15 @@
 import { Recipe } from '../db';
 import { CLAUDE_MODEL, getClient } from './client';
+import { parsedRecipeSchema, firstIssue } from '../validation';
+import { z } from 'zod';
 
-export interface ParsedRecipe {
-  name: string;
-  description?: string;
-  prep_time?: number;
-  cook_time?: number;
-  total_time?: number;
-  servings?: string;
-  recipe_category?: string;
-  recipe_cuisine?: string;
-  ingredients: string[];
-  instructions: string[];
-  notes?: string;
-}
+export type ParsedRecipe = z.infer<typeof parsedRecipeSchema>;
 
-export async function parseRecipeWithClaude(rawText: string): Promise<ParsedRecipe> {
-  const prompt = `Parse this recipe text into a structured JSON format. Follow the Schema.org Recipe standard.
+/** Longest recipe text we'll send to the API. */
+export const MAX_RECIPE_TEXT_LENGTH = 50000;
+
+export function buildParsePrompt(rawText: string): string {
+  return `Parse this recipe text into a structured JSON format. Follow the Schema.org Recipe standard.
 
 Extract the following fields:
 - name: Recipe title
@@ -65,56 +58,89 @@ Return ONLY valid JSON in this exact format:
 
 Recipe text:
 ${rawText}`;
+}
+
+/**
+ * Pulls a JSON object out of a model response, tolerating markdown fences
+ * and prose around the JSON.
+ */
+export function extractJson(text: string): string {
+  let jsonText = text.trim();
+
+  const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    jsonText = fenceMatch[1].trim();
+  }
+
+  if (!jsonText.startsWith('{')) {
+    const start = jsonText.indexOf('{');
+    const end = jsonText.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      jsonText = jsonText.slice(start, end + 1);
+    }
+  }
+
+  return jsonText;
+}
+
+export async function parseRecipeWithClaude(rawText: string): Promise<ParsedRecipe> {
+  if (rawText.length > MAX_RECIPE_TEXT_LENGTH) {
+    throw new Error(
+      `Recipe text is too long (${rawText.length} characters, max ${MAX_RECIPE_TEXT_LENGTH}). Try trimming it to just the recipe.`
+    );
+  }
 
   const client = getClient();
 
   const message = await client.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 2000,
+    // Generous ceiling so long recipes don't get truncated mid-JSON
+    max_tokens: 8000,
     messages: [
       {
         role: 'user',
-        content: prompt,
+        content: buildParsePrompt(rawText),
       },
     ],
   });
 
-  const content = message.content[0];
-  if (content.type !== 'text') {
+  if (message.stop_reason === 'max_tokens') {
+    throw new Error('Recipe is too long to parse in one pass. Try splitting it up.');
+  }
+
+  const content = message.content.find((block) => block.type === 'text');
+  if (!content || content.type !== 'text') {
     throw new Error('Unexpected response type from Claude');
   }
 
-  // Extract JSON from response (handle potential markdown code blocks)
-  let jsonText = content.text.trim();
-  if (jsonText.startsWith('```json')) {
-    jsonText = jsonText.replace(/^```json\n/, '').replace(/\n```$/, '');
-  } else if (jsonText.startsWith('```')) {
-    jsonText = jsonText.replace(/^```\n/, '').replace(/\n```$/, '');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(extractJson(content.text));
+  } catch {
+    throw new Error('Could not read the parsed recipe. Please try again.');
   }
 
-  const parsed: ParsedRecipe = JSON.parse(jsonText);
-
-  // Validate required fields
-  if (!parsed.name || !parsed.ingredients || !parsed.instructions) {
-    throw new Error('Parsed recipe missing required fields (name, ingredients, or instructions)');
+  const result = parsedRecipeSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`Parsed recipe was incomplete (${firstIssue(result.error)}). Please try again.`);
   }
 
-  return parsed;
+  return result.data;
 }
 
 export async function convertParsedToRecipe(parsed: ParsedRecipe, rawText: string): Promise<Omit<Recipe, 'id'>> {
   return {
     name: parsed.name,
-    description: parsed.description,
-    prep_time: parsed.prep_time,
-    cook_time: parsed.cook_time,
-    total_time: parsed.total_time,
-    servings: parsed.servings,
-    recipe_category: parsed.recipe_category,
-    recipe_cuisine: parsed.recipe_cuisine,
+    description: parsed.description ?? undefined,
+    prep_time: parsed.prep_time ?? undefined,
+    cook_time: parsed.cook_time ?? undefined,
+    total_time: parsed.total_time ?? undefined,
+    servings: parsed.servings ?? undefined,
+    recipe_category: parsed.recipe_category ?? undefined,
+    recipe_cuisine: parsed.recipe_cuisine ?? undefined,
     ingredients: parsed.ingredients,
     instructions: parsed.instructions,
-    notes: parsed.notes,
+    notes: parsed.notes ?? undefined,
     raw_text: rawText,
   };
 }

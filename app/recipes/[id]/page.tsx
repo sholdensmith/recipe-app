@@ -1,12 +1,21 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Recipe } from '@/lib/db';
+import { scaleIngredient } from '@/lib/scale-ingredient';
 import PageHeader from '../../_components/PageHeader';
 import Toast from '../../_components/Toast';
 import ConfirmDialog from '../../_components/ConfirmDialog';
+
+const SCALE_OPTIONS = [
+  { label: '½×', value: 0.5 },
+  { label: '1×', value: 1 },
+  { label: '1½×', value: 1.5 },
+  { label: '2×', value: 2 },
+  { label: '3×', value: 3 },
+];
 
 export default function RecipePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -30,6 +39,47 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [editedCuisine, setEditedCuisine] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [cookMode, setCookMode] = useState(false);
+  const [cookStep, setCookStep] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wakeLockRef = useRef<any>(null);
+
+  // Keep the screen awake while cooking (best effort; not all browsers support it)
+  useEffect(() => {
+    if (!cookMode) return;
+
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const nav = navigator as any;
+        if (nav.wakeLock) {
+          const lock = await nav.wakeLock.request('screen');
+          if (cancelled) {
+            lock.release();
+          } else {
+            wakeLockRef.current = lock;
+          }
+        }
+      } catch {
+        // Wake lock is a nice-to-have; ignore failures
+      }
+    };
+
+    acquire();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') acquire();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      wakeLockRef.current?.release?.();
+      wakeLockRef.current = null;
+    };
+  }, [cookMode]);
 
   useEffect(() => {
     fetchRecipe();
@@ -259,6 +309,16 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
               <span className="pointer-events-none">{recipe.is_fan_favorite ? 'Fan Favorite' : 'Mark Fan Favorite'}</span>
             </button>
             <button
+              onClick={() => router.push(`/recipes/${id}/edit`)}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
+              title="Edit this recipe"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              <span className="pointer-events-none">Edit</span>
+            </button>
+            <button
               onClick={() => setShowDeleteConfirm(true)}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
             >
@@ -275,6 +335,16 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
               <span className="pointer-events-none">Print</span>
+            </button>
+            <button
+              onClick={() => { setCookStep(0); setCookMode(true); }}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 touch-manipulation min-h-[44px]"
+              title="Step-by-step cooking mode"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+              </svg>
+              <span className="pointer-events-none">Cook</span>
             </button>
             <button
               onClick={() => router.push(`/meals/new?seedRecipeId=${id}`)}
@@ -305,6 +375,16 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-8 print:shadow-none print:p-0">
+          {/* Photo */}
+          {recipe.image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={recipe.image_url}
+              alt={recipe.name}
+              className="w-full max-h-96 object-cover rounded-lg mb-6 print:hidden"
+            />
+          )}
+
           {/* Description */}
           {recipe.description && (
             <p className="text-lg text-gray-700 mb-6 print:text-sm print:text-black print:mb-2">{recipe.description}</p>
@@ -410,19 +490,46 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             {recipe.servings && (
               <div>
                 <p className="text-sm text-gray-600 mb-1 print:text-black print:mb-0">Servings</p>
-                <p className="font-semibold text-gray-900 print:text-black print:font-normal">{recipe.servings}</p>
+                <p className="font-semibold text-gray-900 print:text-black print:font-normal">
+                  {scale === 1 ? recipe.servings : scaleIngredient(recipe.servings, scale)}
+                </p>
               </div>
             )}
           </div>
 
           {/* Ingredients */}
           <div className="mb-8 print:mb-3">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 print:text-base print:text-black print:mb-1 print:font-semibold">Ingredients</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 print:mb-1">
+              <h2 className="text-2xl font-bold text-gray-900 print:text-base print:text-black print:font-semibold">Ingredients</h2>
+              <div className="flex items-center gap-1 print:hidden" role="group" aria-label="Scale recipe">
+                <span className="text-sm text-gray-500 mr-1">Scale:</span>
+                {SCALE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setScale(option.value)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      scale === option.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {scale !== 1 && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 print:hidden">
+                Quantities scaled to {scale}×. Cooking times and pan sizes may need adjusting too.
+              </p>
+            )}
             <ul className="space-y-2 print:space-y-0 print:text-sm">
               {recipe.ingredients.map((ingredient: string, index: number) => (
                 <li key={index} className="flex items-start">
                   <span className="text-blue-600 mr-3 print:text-black print:mr-2">•</span>
-                  <span className="text-gray-700 print:text-black">{ingredient}</span>
+                  <span className="text-gray-700 print:text-black">
+                    {scale === 1 ? ingredient : scaleIngredient(ingredient, scale)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -523,6 +630,70 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
       </main>
+
+      {/* Cook mode: full-screen step-by-step view with the screen kept awake */}
+      {cookMode && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+            <div>
+              <p className="font-semibold text-gray-900">{recipe.name}</p>
+              <p className="text-sm text-gray-500">
+                Step {cookStep + 1} of {recipe.instructions.length}
+              </p>
+            </div>
+            <button
+              onClick={() => setCookMode(false)}
+              className="text-gray-500 hover:text-gray-700 p-2 min-h-[44px] min-w-[44px]"
+              aria-label="Exit cooking mode"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto flex items-center justify-center px-6 py-8">
+            <p className="text-2xl md:text-4xl leading-relaxed text-gray-900 max-w-3xl text-center">
+              {recipe.instructions[cookStep]}
+            </p>
+          </div>
+
+          <div className="px-4 pb-3">
+            <div className="flex gap-1 mb-3" aria-hidden="true">
+              {recipe.instructions.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 flex-1 rounded-full ${i <= cookStep ? 'bg-orange-500' : 'bg-gray-200'}`}
+                />
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCookStep((s) => Math.max(0, s - 1))}
+                disabled={cookStep === 0}
+                className="flex-1 py-4 rounded-lg font-medium text-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 transition-colors"
+              >
+                ← Back
+              </button>
+              {cookStep < recipe.instructions.length - 1 ? (
+                <button
+                  onClick={() => setCookStep((s) => Math.min(recipe.instructions.length - 1, s + 1))}
+                  className="flex-1 py-4 rounded-lg font-medium text-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+                >
+                  Next →
+                </button>
+              ) : (
+                <button
+                  onClick={() => setCookMode(false)}
+                  className="flex-1 py-4 rounded-lg font-medium text-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                >
+                  Done ✓
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDeleteConfirm && (
         <ConfirmDialog
