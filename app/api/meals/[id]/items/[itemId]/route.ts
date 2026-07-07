@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateMealItem } from '@/lib/db';
+import { updateMealItem, type MealItem } from '@/lib/db';
+import { mealItemPatchSchema, firstIssue } from '@/lib/validation';
 
 export async function PATCH(
   request: NextRequest,
@@ -13,8 +14,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid item ID' }, { status: 400 });
     }
 
-    const updates = await request.json();
-    const success = await updateMealItem(id, updates);
+    const body = await request.json();
+
+    const result = mealItemPatchSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: firstIssue(result.error) }, { status: 400 });
+    }
+
+    const success = await updateMealItem(id, result.data as Partial<MealItem>);
 
     if (!success) {
       return NextResponse.json(

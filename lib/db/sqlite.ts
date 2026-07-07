@@ -1,30 +1,34 @@
 import Database from 'better-sqlite3';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import type { Recipe, Meal, MealItem, MealItemWithRecipe, MealWithItems } from './types';
 
-export interface Recipe {
-  id?: number;
-  name: string;
-  description?: string;
-  author?: string;
-  date_published?: string;
-  prep_time?: number;
-  cook_time?: number;
-  total_time?: number;
-  servings?: string;
-  recipe_yield?: string;
-  recipe_category?: string;
-  recipe_cuisine?: string;
-  ingredients: string[]; // Will be stored as JSON
-  instructions: string[]; // Will be stored as JSON
-  notes?: string;
-  image_url?: string;
-  source_url?: string;
-  raw_text?: string;
-  is_favorite?: boolean | number; // bookmarked — boolean for Postgres, 0/1 for SQLite
-  is_fan_favorite?: boolean | number; // boolean for Postgres, 0/1 for SQLite
-  created_at?: string;
-  updated_at?: string;
+export type { Recipe, Meal, MealItem, MealItemWithRecipe, MealWithItems };
+
+/**
+ * FTS5 treats characters like ", -, ( as query syntax, so raw user input
+ * (e.g. "half-and-half") causes a SQL error. Quoting each word as a string
+ * literal disables operator parsing; the trailing * keeps prefix matching.
+ */
+export function toFtsQuery(input: string): string {
+  const words = input.trim().split(/\s+/).filter(Boolean);
+  return words
+    .map((word) => `"${word.replace(/"/g, '""')}"*`)
+    .join(' ');
+}
+
+// Recipes as stored: ingredients/instructions are JSON strings
+type RecipeRow = Omit<Recipe, 'ingredients' | 'instructions'> & {
+  ingredients: string;
+  instructions: string;
+};
+
+function rowToRecipe(row: RecipeRow): Recipe {
+  return {
+    ...row,
+    ingredients: JSON.parse(row.ingredients),
+    instructions: JSON.parse(row.instructions),
+  };
 }
 
 let db: Database.Database | null = null;
@@ -87,27 +91,19 @@ export function insertRecipe(recipe: Recipe): number {
 export function getAllRecipes(): Recipe[] {
   const db = getDb();
   const stmt = db.prepare('SELECT * FROM recipes ORDER BY created_at DESC');
-  const rows = stmt.all() as any[];
+  const rows = stmt.all() as RecipeRow[];
 
-  return rows.map(row => ({
-    ...row,
-    ingredients: JSON.parse(row.ingredients),
-    instructions: JSON.parse(row.instructions),
-  }));
+  return rows.map(rowToRecipe);
 }
 
 export function getRecipeById(id: number): Recipe | null {
   const db = getDb();
   const stmt = db.prepare('SELECT * FROM recipes WHERE id = ?');
-  const row = stmt.get(id) as any;
+  const row = stmt.get(id) as RecipeRow | undefined;
 
   if (!row) return null;
 
-  return {
-    ...row,
-    ingredients: JSON.parse(row.ingredients),
-    instructions: JSON.parse(row.instructions),
-  };
+  return rowToRecipe(row);
 }
 
 export function searchRecipesByIngredient(ingredient: string): Recipe[] {
@@ -119,13 +115,9 @@ export function searchRecipesByIngredient(ingredient: string): Recipe[] {
     ORDER BY rank
   `);
 
-  const rows = stmt.all(ingredient) as any[];
+  const rows = stmt.all(ingredient) as RecipeRow[];
 
-  return rows.map(row => ({
-    ...row,
-    ingredients: JSON.parse(row.ingredients),
-    instructions: JSON.parse(row.instructions),
-  }));
+  return rows.map(rowToRecipe);
 }
 
 export function filterRecipes(filters: {
@@ -137,7 +129,7 @@ export function filterRecipes(filters: {
 }): Recipe[] {
   const db = getDb();
   let query = 'SELECT * FROM recipes WHERE 1=1';
-  const params: any[] = [];
+  const params: string[] = [];
 
   if (filters.favorites) {
     query += ' AND is_favorite = 1';
@@ -158,9 +150,8 @@ export function filterRecipes(filters: {
     params.push(filters.cuisine);
   }
 
-  if (filters.search) {
-    // Add prefix wildcard for partial matching (e.g., "bulg" matches "bulgur")
-    const searchTerm = filters.search.trim() + '*';
+  const searchTerm = filters.search ? toFtsQuery(filters.search) : '';
+  if (searchTerm) {
 
     const favoritesFilter = filters.favorites ? 'AND is_favorite = 1' : '';
     const categoryFilter = filters.category ? 'AND recipe_category = ?' : '';
@@ -183,31 +174,27 @@ export function filterRecipes(filters: {
   }
 
   const stmt = db.prepare(query);
-  const rows = stmt.all(...params) as any[];
+  const rows = stmt.all(...params) as RecipeRow[];
 
-  return rows.map(row => ({
-    ...row,
-    ingredients: JSON.parse(row.ingredients),
-    instructions: JSON.parse(row.instructions),
-  }));
+  return rows.map(rowToRecipe);
 }
 
 export function getCategories(): string[] {
   const db = getDb();
   const stmt = db.prepare('SELECT DISTINCT recipe_category FROM recipes WHERE recipe_category IS NOT NULL ORDER BY recipe_category');
-  return stmt.all().map((row: any) => row.recipe_category);
+  return (stmt.all() as { recipe_category: string }[]).map((row) => row.recipe_category);
 }
 
 export function getCuisines(): string[] {
   const db = getDb();
   const stmt = db.prepare('SELECT DISTINCT recipe_cuisine FROM recipes WHERE recipe_cuisine IS NOT NULL ORDER BY recipe_cuisine');
-  return stmt.all().map((row: any) => row.recipe_cuisine);
+  return (stmt.all() as { recipe_cuisine: string }[]).map((row) => row.recipe_cuisine);
 }
 
 export function updateRecipe(id: number, recipe: Partial<Recipe>): boolean {
   const db = getDb();
   const updates: string[] = [];
-  const params: any = { id };
+  const params: Record<string, unknown> = { id };
 
   if (recipe.name !== undefined) {
     updates.push('name = @name');
@@ -297,36 +284,6 @@ export function deleteRecipe(id: number): boolean {
   return result.changes > 0;
 }
 
-// ===== MEAL INTERFACES =====
-
-export interface Meal {
-  id?: number;
-  name: string;
-  servings?: string;
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface MealItem {
-  id?: number;
-  meal_id: number;
-  recipe_id?: number;
-  item_type: 'recipe' | 'simple';
-  simple_item_name?: string;
-  simple_item_category?: string;
-  order_index: number;
-  created_at?: string;
-}
-
-export interface MealItemWithRecipe extends MealItem {
-  recipe?: Recipe;
-}
-
-export interface MealWithItems extends Meal {
-  items: MealItemWithRecipe[];
-}
-
 // ===== MEAL CRUD OPERATIONS =====
 
 export function insertMeal(meal: Meal): number {
@@ -360,7 +317,7 @@ export function getMealById(id: number): Meal | null {
 export function updateMeal(id: number, meal: Partial<Meal>): boolean {
   const db = getDb();
   const updates: string[] = [];
-  const params: any = { id };
+  const params: Record<string, unknown> = { id };
 
   if (meal.name !== undefined) {
     updates.push('name = @name');
@@ -441,16 +398,36 @@ export function getMealItems(mealId: number): MealItemWithRecipe[] {
     ORDER BY mi.order_index ASC
   `);
 
-  const rows = stmt.all(mealId) as any[];
+  interface MealItemRow {
+    id: number;
+    meal_id: number;
+    recipe_id: number | null;
+    item_type: 'recipe' | 'simple';
+    simple_item_name: string | null;
+    simple_item_category: string | null;
+    order_index: number;
+    created_at: string;
+    recipe_name: string;
+    recipe_description: string | null;
+    recipe_ingredients: string;
+    recipe_instructions: string;
+    recipe_category: string | null;
+    recipe_cuisine: string | null;
+    recipe_prep_time: number | null;
+    recipe_cook_time: number | null;
+    recipe_servings: string | null;
+  }
+
+  const rows = stmt.all(mealId) as MealItemRow[];
 
   return rows.map(row => {
     const item: MealItemWithRecipe = {
       id: row.id,
       meal_id: row.meal_id,
-      recipe_id: row.recipe_id,
+      recipe_id: row.recipe_id ?? undefined,
       item_type: row.item_type,
-      simple_item_name: row.simple_item_name,
-      simple_item_category: row.simple_item_category,
+      simple_item_name: row.simple_item_name ?? undefined,
+      simple_item_category: row.simple_item_category ?? undefined,
       order_index: row.order_index,
       created_at: row.created_at,
     };
@@ -460,14 +437,14 @@ export function getMealItems(mealId: number): MealItemWithRecipe[] {
       item.recipe = {
         id: row.recipe_id,
         name: row.recipe_name,
-        description: row.recipe_description,
+        description: row.recipe_description ?? undefined,
         ingredients: JSON.parse(row.recipe_ingredients),
         instructions: JSON.parse(row.recipe_instructions),
-        recipe_category: row.recipe_category,
-        recipe_cuisine: row.recipe_cuisine,
-        prep_time: row.recipe_prep_time,
-        cook_time: row.recipe_cook_time,
-        servings: row.recipe_servings,
+        recipe_category: row.recipe_category ?? undefined,
+        recipe_cuisine: row.recipe_cuisine ?? undefined,
+        prep_time: row.recipe_prep_time ?? undefined,
+        cook_time: row.recipe_cook_time ?? undefined,
+        servings: row.recipe_servings ?? undefined,
       };
     }
 
@@ -497,7 +474,7 @@ export function deleteMealItem(id: number): boolean {
 export function updateMealItem(id: number, item: Partial<MealItem>): boolean {
   const db = getDb();
   const updates: string[] = [];
-  const params: any = { id };
+  const params: Record<string, unknown> = { id };
 
   if (item.simple_item_name !== undefined) {
     updates.push('simple_item_name = @simple_item_name');

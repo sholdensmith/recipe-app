@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllMeals, insertMeal, getMealWithItems } from '@/lib/db';
+import { getAllMeals, insertMeal, getMealWithItems, type Meal } from '@/lib/db';
+import { mealCreateSchema, firstIssue } from '@/lib/validation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,16 +40,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const meal = await request.json();
+    const body = await request.json();
 
-    if (!meal.name) {
-      return NextResponse.json(
-        { error: 'Missing required field: name' },
-        { status: 400 }
-      );
+    const result = mealCreateSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: firstIssue(result.error) }, { status: 400 });
     }
 
-    const id = await insertMeal(meal);
+    const id = await insertMeal(result.data as Meal);
     return NextResponse.json({ id, message: 'Meal created successfully' });
   } catch (error) {
     console.error('Error creating meal:', error);

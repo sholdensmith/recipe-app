@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMealWithItems, updateMeal, deleteMeal } from '@/lib/db';
+import { getMealWithItems, updateMeal, deleteMeal, type Meal } from '@/lib/db';
+import { mealPatchSchema, firstIssue } from '@/lib/validation';
 
 export async function GET(
   request: NextRequest,
@@ -50,8 +51,14 @@ export async function PATCH(
       );
     }
 
-    const updates = await request.json();
-    const success = await updateMeal(mealId, updates);
+    const body = await request.json();
+
+    const result = mealPatchSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: firstIssue(result.error) }, { status: 400 });
+    }
+
+    const success = await updateMeal(mealId, result.data as Partial<Meal>);
 
     if (!success) {
       return NextResponse.json(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRecipeById, updateRecipe, deleteRecipe } from '@/lib/db';
+import { getRecipeById, updateRecipe, deleteRecipe, type Recipe } from '@/lib/db';
+import { recipePatchSchema, firstIssue } from '@/lib/validation';
 
 export async function GET(
   request: NextRequest,
@@ -51,7 +52,13 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const success = await updateRecipe(recipeId, body);
+
+    const result = recipePatchSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: firstIssue(result.error) }, { status: 400 });
+    }
+
+    const success = await updateRecipe(recipeId, result.data as Partial<Recipe>);
 
     if (!success) {
       return NextResponse.json(

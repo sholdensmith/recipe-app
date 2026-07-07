@@ -32,6 +32,27 @@ interface Draft {
   ingredients: string;
   instructions: string;
   notes: string;
+  image_url: string;
+  source_url: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resultToDraft(result: any): Draft {
+  return {
+    name: result.name ?? '',
+    description: result.description ?? '',
+    prep_time: result.prep_time != null ? String(result.prep_time) : '',
+    cook_time: result.cook_time != null ? String(result.cook_time) : '',
+    total_time: result.total_time != null ? String(result.total_time) : '',
+    servings: result.servings ?? '',
+    recipe_category: result.recipe_category ?? '',
+    recipe_cuisine: result.recipe_cuisine ?? '',
+    ingredients: (result.ingredients ?? []).join('\n'),
+    instructions: (result.instructions ?? []).join('\n'),
+    notes: result.notes ?? '',
+    image_url: result.image_url ?? '',
+    source_url: result.source_url ?? '',
+  };
 }
 
 function toNumber(value: string): number | undefined {
@@ -50,7 +71,9 @@ function toLines(value: string): string[] {
 
 export default function AddRecipe() {
   const router = useRouter();
+  const [mode, setMode] = useState<'text' | 'url'>('text');
   const [rawText, setRawText] = useState('');
+  const [importUrl, setImportUrl] = useState('');
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -82,19 +105,37 @@ export default function AddRecipe() {
         throw new Error(result.error || 'Failed to parse recipe');
       }
 
-      setDraft({
-        name: result.name ?? '',
-        description: result.description ?? '',
-        prep_time: result.prep_time != null ? String(result.prep_time) : '',
-        cook_time: result.cook_time != null ? String(result.cook_time) : '',
-        total_time: result.total_time != null ? String(result.total_time) : '',
-        servings: result.servings ?? '',
-        recipe_category: result.recipe_category ?? '',
-        recipe_cuisine: result.recipe_cuisine ?? '',
-        ingredients: (result.ingredients ?? []).join('\n'),
-        instructions: (result.instructions ?? []).join('\n'),
-        notes: result.notes ?? '',
+      setDraft(resultToDraft(result));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const handleImportUrl = async () => {
+    if (!importUrl.trim()) {
+      setError('Please enter a recipe URL');
+      return;
+    }
+
+    setParsing(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/import-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl.trim() }),
       });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to import recipe');
+      }
+
+      setDraft(resultToDraft(result));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -137,7 +178,9 @@ export default function AddRecipe() {
           ingredients: toLines(draft.ingredients),
           instructions: toLines(draft.instructions),
           notes: draft.notes.trim() || undefined,
-          raw_text: rawText,
+          image_url: draft.image_url.trim() || undefined,
+          source_url: draft.source_url.trim() || undefined,
+          raw_text: rawText || undefined,
         }),
       });
 
@@ -172,17 +215,66 @@ export default function AddRecipe() {
           {!draft ? (
             <>
               <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                  Paste Your Recipe
-                </h2>
-                <p className="text-gray-600 text-sm">
-                  Paste your recipe in any format. AI will extract the title, ingredients,
-                  instructions, cooking times, and categorize it. You&apos;ll get to review and
-                  edit everything before it&apos;s saved.
-                </p>
+                <div className="flex gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('text'); setError(''); }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${mode === 'text' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    Paste text
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode('url'); setError(''); }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${mode === 'url' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    From a link
+                  </button>
+                </div>
+                {mode === 'text' ? (
+                  <>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                      Paste Your Recipe
+                    </h2>
+                    <p className="text-gray-600 text-sm">
+                      Paste your recipe in any format. AI will extract the title, ingredients,
+                      instructions, cooking times, and categorize it. You&apos;ll get to review and
+                      edit everything before it&apos;s saved.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                      Import from a Link
+                    </h2>
+                    <p className="text-gray-600 text-sm">
+                      Paste a link to a recipe page. Most sites include structured recipe data
+                      that imports instantly; otherwise AI reads the page for you. You&apos;ll
+                      review everything before it&apos;s saved.
+                    </p>
+                  </>
+                )}
               </div>
 
-              <div className="mb-6">
+              {mode === 'url' && (
+                <div className="mb-6">
+                  <label htmlFor="recipe-url" className="block text-sm font-medium text-gray-700 mb-2">
+                    Recipe URL
+                  </label>
+                  <input
+                    id="recipe-url"
+                    type="url"
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleImportUrl(); }}
+                    placeholder="https://www.example.com/best-chocolate-chip-cookies"
+                    disabled={parsing}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 text-gray-900 placeholder:text-gray-400"
+                  />
+                </div>
+              )}
+
+              <div className={mode === 'text' ? 'mb-6' : 'hidden'}>
                 <label htmlFor="recipe-text" className="block text-sm font-medium text-gray-700 mb-2">
                   Recipe Text
                 </label>
@@ -231,17 +323,19 @@ Makes 48 cookies"
 
               <div className="flex gap-4">
                 <button
-                  onClick={handleParse}
+                  onClick={mode === 'text' ? handleParse : handleImportUrl}
                   disabled={parsing}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   {parsing ? (
                     <>
                       <Spinner />
-                      Parsing with AI...
+                      {mode === 'text' ? 'Parsing with AI...' : 'Importing...'}
                     </>
-                  ) : (
+                  ) : mode === 'text' ? (
                     'Parse Recipe'
+                  ) : (
+                    'Import Recipe'
                   )}
                 </button>
                 <Link
@@ -252,7 +346,7 @@ Makes 48 cookies"
                 </Link>
               </div>
 
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <div className={mode === 'text' ? 'mt-6 p-4 bg-blue-50 rounded-lg' : 'hidden'}>
                 <h3 className="text-sm font-semibold text-blue-900 mb-2">Tips for best results:</h3>
                 <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
                   <li>Include the recipe name/title</li>
@@ -424,6 +518,35 @@ Makes 48 cookies"
                     rows={3}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="image_url" className="block text-sm font-medium text-gray-700 mb-1">
+                      Photo URL <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      id="image_url"
+                      type="url"
+                      value={draft.image_url}
+                      onChange={(e) => updateDraft('image_url', e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="source_url" className="block text-sm font-medium text-gray-700 mb-1">
+                      Source URL <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      id="source_url"
+                      type="url"
+                      value={draft.source_url}
+                      onChange={(e) => updateDraft('source_url', e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
+                    />
+                  </div>
                 </div>
               </div>
 
